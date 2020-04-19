@@ -61,7 +61,10 @@ lint:
 
 .PHONY: test
 test:
-	@for PKG in $(PACKAGES); do $(GO) test -cover -coverprofile $$GOPATH/src/$$PKG/coverage.out $$PKG || exit 1; done;
+	@which goverage > /dev/null; if [ $$? -ne 0 ]; then \
+		$(GO) get -u github.com/haya14busa/goverage; \
+	fi
+	go run github.com/haya14busa/goverage -v -coverprofile coverage.out $(PACKAGES)
 
 .PHONY: build
 build: $(BIN)/$(EXECUTABLE)
