@@ -1,0 +1,29 @@
+name-template: 'v$NEXT_PATCH_VERSION'
+tag-template: 'v$NEXT_PATCH_VERSION'
+template: |
+  $CHANGES
+categories:
+  - title: 'Added'
+    labels:
+      - 'enhancement'
+  - title: 'Fixed'
+    labels:
+      - 'bug'
+  - title: 'Changed'
+    labels:
+      - 'changed'
+  - title: 'Deprecated'
+    labels:
+      - 'deprecation'
+  - title: 'Removed'
+    labels:
+      - 'removed'
+  - title: 'Security'
+    labels:
+      - 'security'
+  - title: 'Documentation'
+    labels:
+      - 'documentation'
+  - title: 'Dependency Updates'
+    labels:
+      - 'dependencies'

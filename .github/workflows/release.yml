@@ -1,0 +1,22 @@
+name: Release Actions
+on:
+  release:
+    types: [created]
+
+jobs:
+  default:
+    name: Upload release artifacts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-go@v2
+      - name: Set VERSION env
+        run: echo ::set-env name=VERSION::$(echo ${GITHUB_REF} | rev | cut -d'/' -f 1 | rev )
+      - name: Build artifacts
+        run: make release VERSION=${{ env.VERSION }}
+      - name: Upload artifacts
+        uses: skx/github-action-publish-binaries@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          args: 'dist/*'
