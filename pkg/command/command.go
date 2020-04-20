@@ -12,7 +12,7 @@ func Run() error {
 
 	app := &cli.App{
 		Name:    "openvpn_exporter",
-		Version: version.String + " (" + version.Revision + " // " + version.Date + ")",
+		Version: version.Info(),
 		Usage:   "OpenVPN exporter",
 		Authors: []*cli.Author{
 			{
