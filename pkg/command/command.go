@@ -57,6 +57,7 @@ func run(c *cli.Context) error {
 		version.GoVersion,
 		version.Started,
 	))
+	r.MustRegister(collector.NewOpenVPNCollector("./example/version1.status"))
 	http.Handle("/metrics",
 		promhttp.HandlerFor(r, promhttp.HandlerOpts{}),
 	)
