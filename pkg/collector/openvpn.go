@@ -9,14 +9,15 @@ import (
 
 // OpenVPNCollector collects metrics from openvpn status files
 type OpenVPNCollector struct {
-	logger           log.Logger
-	name             string
-	statusFile       string
-	LastUpdated      *prometheus.Desc
-	ConnectedClients *prometheus.Desc
-	BytesReceived    *prometheus.Desc
-	BytesSent        *prometheus.Desc
-	ConnectedSince   *prometheus.Desc
+	logger                log.Logger
+	name                  string
+	statusFile            string
+	LastUpdated           *prometheus.Desc
+	ConnectedClients      *prometheus.Desc
+	BytesReceived         *prometheus.Desc
+	BytesSent             *prometheus.Desc
+	ConnectedSince        *prometheus.Desc
+	MaxBcastMcastQueueLen *prometheus.Desc
 }
 
 // NewOpenVPNCollector returns a new OpenVPNCollector
@@ -35,6 +36,12 @@ func NewOpenVPNCollector(logger log.Logger, name string, statusFile string) *Ope
 		ConnectedClients: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "connections"),
 			"Amount of currently connected clients",
+			[]string{"server"},
+			nil,
+		),
+		MaxBcastMcastQueueLen: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "", "max_bcast_mcast_queue_len"),
+			"MaxBcastMcastQueueLen of the server",
 			[]string{"server"},
 			nil,
 		),
@@ -66,6 +73,7 @@ func (c *OpenVPNCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.BytesSent
 	ch <- c.BytesReceived
 	ch <- c.ConnectedSince
+	ch <- c.MaxBcastMcastQueueLen
 }
 
 // Collect is called by the Prometheus registry when collecting metrics.
@@ -126,6 +134,12 @@ func (c *OpenVPNCollector) Collect(ch chan<- prometheus.Metric) {
 		c.LastUpdated,
 		prometheus.GaugeValue,
 		float64(status.UpdatedAt.Unix()),
+		c.name,
+	)
+	ch <- prometheus.MustNewConstMetric(
+		c.MaxBcastMcastQueueLen,
+		prometheus.GaugeValue,
+		float64(status.GlobalStats.MaxBcastMcastQueueLen),
 		c.name,
 	)
 }
