@@ -28,8 +28,8 @@ ifndef REVISION
 endif
 
 LDFLAGS += -s -w
-LDFLAGS += -X "$(IMPORT)/pkg/version.String=$(VERSION)"
-LDFLAGS += -X "$(IMPORT)/pkg/version.Date=$(DATE)"
+LDFLAGS += -X "$(IMPORT)/pkg/version.Version=$(VERSION)"
+LDFLAGS += -X "$(IMPORT)/pkg/version.BuildDate=$(DATE)"
 LDFLAGS += -X "$(IMPORT)/pkg/version.Revision=$(REVISION)"
 
 .PHONY: all
@@ -38,6 +38,7 @@ all: build
 .PHONY: clean
 clean:
 	$(GO) clean -i ./...
+	rm -rf $(BIN)/
 	rm -rf $(DIST)/
 
 .PHONY: sync

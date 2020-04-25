@@ -1,9 +1,17 @@
 package command
 
 import (
+	"github.com/patrickjahns/openvpn_exporter/pkg/collector"
+	"github.com/patrickjahns/openvpn_exporter/pkg/config"
 	"github.com/patrickjahns/openvpn_exporter/pkg/version"
+	"net/http"
 	"os"
+	"strings"
 
+	"github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/log/level"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/urfave/cli/v2"
 )
 
@@ -12,7 +20,7 @@ func Run() error {
 
 	app := &cli.App{
 		Name:    "openvpn_exporter",
-		Version: version.String + " (" + version.Revision + " // " + version.Date + ")",
+		Version: version.Info(),
 		Usage:   "OpenVPN exporter",
 		Authors: []*cli.Author{
 			{
@@ -21,7 +29,7 @@ func Run() error {
 			},
 		},
 	}
-
+	cfg := config.Load()
 	cli.HelpFlag = &cli.BoolFlag{
 		Name:    "help",
 		Aliases: []string{"h"},
@@ -34,5 +42,131 @@ func Run() error {
 		Usage:   "Prints the current version",
 	}
 
+	app.Flags = []cli.Flag{
+		&cli.StringFlag{
+			Name:        "web.address",
+			Aliases:     []string{"web.listen-address"},
+			Value:       "0.0.0.0:9176",
+			Usage:       "Address to bind the metrics server",
+			Destination: &cfg.Server.Addr,
+		},
+		&cli.StringFlag{
+			Name:        "web.path",
+			Aliases:     []string{"web.telemetry-path"},
+			Value:       "/metrics",
+			Usage:       "Path to bind the metrics server",
+			Destination: &cfg.Server.Path,
+		},
+		&cli.StringFlag{
+			Name:        "web.root",
+			Value:       "/",
+			Usage:       "Root path to exporter endpoints",
+			Destination: &cfg.Server.Root,
+		},
+		&cli.StringSliceFlag{
+			Name:     "status-file",
+			Usage:    "The OpenVPN status file(s) to export (example test:./example/version1.status )",
+			Required: true,
+		},
+	}
+
+	app.Before = func(c *cli.Context) error {
+		cfg.StatusFile = c.StringSlice("status-file")
+		return nil
+	}
+
+	app.Action = func(c *cli.Context) error {
+		return run(c, cfg)
+	}
+
 	return app.Run(os.Args)
+}
+
+func run(c *cli.Context, cfg *config.Config) error {
+	// setup logging
+	logger := setupLogging(cfg)
+	level.Info(logger).Log(
+		"msg", "Starting openvpn_exporter",
+		"version", version.Version,
+		"revision", version.Revision,
+		"buildDate", version.BuildDate,
+		"goVersion", version.GoVersion,
+	)
+
+	// enable profiler
+	r := prometheus.NewRegistry()
+	r.MustRegister(prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{}))
+	r.MustRegister(prometheus.NewGoCollector())
+	r.MustRegister(collector.NewGeneralCollector(
+		logger,
+		version.Version,
+		version.Revision,
+		version.BuildDate,
+		version.GoVersion,
+		version.Started,
+	))
+	for _, statusFile := range cfg.StatusFile {
+		serverName, statusFile := parseStatusFileSlice(statusFile)
+
+		level.Info(logger).Log(
+			"msg", "registering collector for",
+			"serverName", serverName,
+			"statusFile", statusFile,
+		)
+		r.MustRegister(collector.NewOpenVPNCollector(
+			logger,
+			serverName,
+			statusFile,
+		))
+	}
+
+	http.Handle(cfg.Server.Path,
+		promhttp.HandlerFor(r, promhttp.HandlerOpts{}),
+	)
+	http.HandleFunc(cfg.Server.Root, func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`<html>
+			<head><title>OpenVPN Exporter</title></head>
+			<body>
+			<h1>OpenVPN exporter</h1>
+			<p><a href="/metrics">Metrics</a></p>
+			</body>
+			</html>`))
+	})
+
+	level.Info(logger).Log("msg", "Listening on", "addr", cfg.Server.Addr)
+	if err := http.ListenAndServe(cfg.Server.Addr, nil); err != nil {
+		level.Error(logger).Log("msg", "http listenandserve error", "err", err)
+		return err
+	}
+	return nil
+}
+
+func parseStatusFileSlice(statusFile string) (string, string) {
+	parts := strings.Split(statusFile, ":")
+	if len(parts) > 1 {
+		return parts[0], parts[1]
+	}
+	return "server", parts[0]
+}
+
+func setupLogging(cfg *config.Config) log.Logger {
+	logger := log.NewLogfmtLogger(log.NewSyncWriter(os.Stderr))
+
+	switch strings.ToLower(cfg.Logs.Level) {
+	case "error":
+		logger = level.NewFilter(logger, level.AllowError())
+	case "warn":
+		logger = level.NewFilter(logger, level.AllowWarn())
+	case "info":
+		logger = level.NewFilter(logger, level.AllowInfo())
+	case "debug":
+		logger = level.NewFilter(logger, level.AllowDebug())
+	default:
+		logger = level.NewFilter(logger, level.AllowInfo())
+	}
+	logger = log.With(logger,
+		"ts", log.DefaultTimestampUTC,
+		"caller", log.DefaultCaller,
+	)
+	return logger
 }
