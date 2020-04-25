@@ -76,6 +76,7 @@ func run(c *cli.Context) error {
 	))
 	r.MustRegister(collector.NewOpenVPNCollector(
 		logger,
+		"udp",
 		statusFile,
 	))
 	http.Handle("/metrics",

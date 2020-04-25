@@ -10,6 +10,7 @@ import (
 // OpenVPNCollector collects metrics from openvpn status files
 type OpenVPNCollector struct {
 	logger           log.Logger
+	name             string
 	statusFile       string
 	LastUpdated      *prometheus.Desc
 	ConnectedClients *prometheus.Desc
@@ -19,10 +20,11 @@ type OpenVPNCollector struct {
 }
 
 // NewOpenVPNCollector returns a new OpenVPNCollector
-func NewOpenVPNCollector(logger log.Logger, statusFile string) *OpenVPNCollector {
+func NewOpenVPNCollector(logger log.Logger, name string, statusFile string) *OpenVPNCollector {
 	return &OpenVPNCollector{
 		logger:     logger,
 		statusFile: statusFile,
+		name:       name,
 
 		LastUpdated: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "last_updated"),
@@ -70,8 +72,8 @@ func (c *OpenVPNCollector) Describe(ch chan<- *prometheus.Desc) {
 func (c *OpenVPNCollector) Collect(ch chan<- prometheus.Metric) {
 	level.Debug(c.logger).Log(
 		"statusFile", c.statusFile,
+		"name", c.name,
 	)
-	labels := []string{"udp"}
 	status, err := openvpn.ParseFile(c.statusFile)
 	if err != nil {
 		level.Warn(c.logger).Log(
@@ -94,19 +96,19 @@ func (c *OpenVPNCollector) Collect(ch chan<- prometheus.Metric) {
 			c.BytesReceived,
 			prometheus.GaugeValue,
 			client.BytesReceived,
-			labels[0], client.CommonName,
+			c.name, client.CommonName,
 		)
 		ch <- prometheus.MustNewConstMetric(
 			c.BytesSent,
 			prometheus.GaugeValue,
 			client.BytesSent,
-			labels[0], client.CommonName,
+			c.name, client.CommonName,
 		)
 		ch <- prometheus.MustNewConstMetric(
 			c.ConnectedSince,
 			prometheus.GaugeValue,
 			float64(client.ConnectedSince.Unix()),
-			labels[0], client.CommonName,
+			c.name, client.CommonName,
 		)
 	}
 	level.Debug(c.logger).Log(
@@ -118,12 +120,12 @@ func (c *OpenVPNCollector) Collect(ch chan<- prometheus.Metric) {
 		c.ConnectedClients,
 		prometheus.GaugeValue,
 		float64(connectedClients),
-		labels...,
+		c.name,
 	)
 	ch <- prometheus.MustNewConstMetric(
 		c.LastUpdated,
 		prometheus.GaugeValue,
 		float64(status.UpdatedAt.Unix()),
-		labels...,
+		c.name,
 	)
 }
