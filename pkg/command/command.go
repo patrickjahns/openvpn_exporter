@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/urfave/cli/v2"
@@ -46,18 +48,36 @@ func Run() error {
 }
 
 func run(c *cli.Context) error {
+	// hardcoded vars for development, will be replaced with cli/config
+	addr := ":9000"
+	statusFile := "./example/version1.status"
+
+	// setup logging
+	logger := setupLogging()
+	level.Info(logger).Log(
+		"msg", "Starting openvpn_exporter",
+		"version", version.Version,
+		"revision", version.Revision,
+		"buildDate", version.BuildDate,
+		"goVersion", version.GoVersion,
+	)
+
 	// enable profiler
 	r := prometheus.NewRegistry()
 	r.MustRegister(prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{}))
 	r.MustRegister(prometheus.NewGoCollector())
 	r.MustRegister(collector.NewGeneralCollector(
+		logger,
 		version.Version,
 		version.Revision,
 		version.BuildDate,
 		version.GoVersion,
 		version.Started,
 	))
-	r.MustRegister(collector.NewOpenVPNCollector("./example/version1.status"))
+	r.MustRegister(collector.NewOpenVPNCollector(
+		logger,
+		statusFile,
+	))
 	http.Handle("/metrics",
 		promhttp.HandlerFor(r, promhttp.HandlerOpts{}),
 	)
@@ -70,8 +90,22 @@ func run(c *cli.Context) error {
 			</body>
 			</html>`))
 	})
-	if err := http.ListenAndServe(":9000", nil); err != nil {
+
+	level.Info(logger).Log("msg", "Listening on", "addr", addr)
+	if err := http.ListenAndServe(addr, nil); err != nil {
+		level.Error(logger).Log("msg", "http listenandserve error", "err", err)
 		return err
 	}
 	return nil
+}
+
+func setupLogging() log.Logger {
+	filterOption := level.AllowDebug()
+	logger := log.NewLogfmtLogger(log.NewSyncWriter(os.Stderr))
+	logger = level.NewFilter(logger, filterOption)
+	logger = log.With(logger,
+		"ts", log.DefaultTimestampUTC,
+		"caller", log.DefaultCaller,
+	)
+	return logger
 }

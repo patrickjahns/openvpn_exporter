@@ -3,6 +3,8 @@ package collector
 import (
 	"time"
 
+	"github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -13,6 +15,7 @@ const (
 
 // GeneralCollector collects metrics, mostly runtime, about this exporter in general.
 type GeneralCollector struct {
+	logger    log.Logger
 	version   string
 	revision  string
 	buildDate string
@@ -24,8 +27,9 @@ type GeneralCollector struct {
 }
 
 // NewGeneralCollector returns a new GeneralCollector.
-func NewGeneralCollector(version string, revision string, buildDate string, goVersion string, started time.Time) *GeneralCollector {
+func NewGeneralCollector(logger log.Logger, version string, revision string, buildDate string, goVersion string, started time.Time) *GeneralCollector {
 	return &GeneralCollector{
+		logger:    logger,
 		version:   version,
 		revision:  revision,
 		buildDate: buildDate,
@@ -56,6 +60,14 @@ func (c *GeneralCollector) Describe(ch chan<- *prometheus.Desc) {
 
 // Collect is called by the Prometheus registry when collecting metrics.
 func (c *GeneralCollector) Collect(ch chan<- prometheus.Metric) {
+	level.Debug(c.logger).Log(
+		"started", c.started.Unix(),
+		"version", c.version,
+		"revision", c.revision,
+		"buildDate", c.buildDate,
+		"goVersion", c.goVersion,
+		"started", c.started,
+	)
 	ch <- prometheus.MustNewConstMetric(
 		c.StartTime,
 		prometheus.GaugeValue,
