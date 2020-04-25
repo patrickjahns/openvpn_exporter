@@ -2,9 +2,11 @@ package command
 
 import (
 	"github.com/patrickjahns/openvpn_exporter/pkg/collector"
+	"github.com/patrickjahns/openvpn_exporter/pkg/config"
 	"github.com/patrickjahns/openvpn_exporter/pkg/version"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
@@ -27,7 +29,7 @@ func Run() error {
 			},
 		},
 	}
-
+	cfg := config.Load()
 	cli.HelpFlag = &cli.BoolFlag{
 		Name:    "help",
 		Aliases: []string{"h"},
@@ -40,20 +42,49 @@ func Run() error {
 		Usage:   "Prints the current version",
 	}
 
+	app.Flags = []cli.Flag{
+		&cli.StringFlag{
+			Name:        "web.address",
+			Aliases:     []string{"web.listen-address"},
+			Value:       "0.0.0.0:9176",
+			Usage:       "Address to bind the metrics server",
+			Destination: &cfg.Server.Addr,
+		},
+		&cli.StringFlag{
+			Name:        "web.path",
+			Aliases:     []string{"web.telemetry-path"},
+			Value:       "/metrics",
+			Usage:       "Path to bind the metrics server",
+			Destination: &cfg.Server.Path,
+		},
+		&cli.StringFlag{
+			Name:        "web.root",
+			Value:       "/",
+			Usage:       "Root path to exporter endpoints",
+			Destination: &cfg.Server.Root,
+		},
+		&cli.StringSliceFlag{
+			Name:     "status-file",
+			Usage:    "The OpenVPN status file(s) to export (example test:./example/version1.status )",
+			Required: true,
+		},
+	}
+
+	app.Before = func(c *cli.Context) error {
+		cfg.StatusFile = c.StringSlice("status-file")
+		return nil
+	}
+
 	app.Action = func(c *cli.Context) error {
-		return run(c)
+		return run(c, cfg)
 	}
 
 	return app.Run(os.Args)
 }
 
-func run(c *cli.Context) error {
-	// hardcoded vars for development, will be replaced with cli/config
-	addr := ":9000"
-	statusFile := "./example/version1.status"
-
+func run(c *cli.Context, cfg *config.Config) error {
 	// setup logging
-	logger := setupLogging()
+	logger := setupLogging(cfg)
 	level.Info(logger).Log(
 		"msg", "Starting openvpn_exporter",
 		"version", version.Version,
@@ -74,15 +105,25 @@ func run(c *cli.Context) error {
 		version.GoVersion,
 		version.Started,
 	))
-	r.MustRegister(collector.NewOpenVPNCollector(
-		logger,
-		"udp",
-		statusFile,
-	))
-	http.Handle("/metrics",
+	for _, statusFile := range cfg.StatusFile {
+		serverName, statusFile := parseStatusFileSlice(statusFile)
+
+		level.Info(logger).Log(
+			"msg", "registering collector for",
+			"serverName", serverName,
+			"statusFile", statusFile,
+		)
+		r.MustRegister(collector.NewOpenVPNCollector(
+			logger,
+			serverName,
+			statusFile,
+		))
+	}
+
+	http.Handle(cfg.Server.Path,
 		promhttp.HandlerFor(r, promhttp.HandlerOpts{}),
 	)
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc(cfg.Server.Root, func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(`<html>
 			<head><title>OpenVPN Exporter</title></head>
 			<body>
@@ -92,18 +133,37 @@ func run(c *cli.Context) error {
 			</html>`))
 	})
 
-	level.Info(logger).Log("msg", "Listening on", "addr", addr)
-	if err := http.ListenAndServe(addr, nil); err != nil {
+	level.Info(logger).Log("msg", "Listening on", "addr", cfg.Server.Addr)
+	if err := http.ListenAndServe(cfg.Server.Addr, nil); err != nil {
 		level.Error(logger).Log("msg", "http listenandserve error", "err", err)
 		return err
 	}
 	return nil
 }
 
-func setupLogging() log.Logger {
-	filterOption := level.AllowDebug()
+func parseStatusFileSlice(statusFile string) (string, string) {
+	parts := strings.Split(statusFile, ":")
+	if len(parts) > 1 {
+		return parts[0], parts[1]
+	}
+	return "server", parts[0]
+}
+
+func setupLogging(cfg *config.Config) log.Logger {
 	logger := log.NewLogfmtLogger(log.NewSyncWriter(os.Stderr))
-	logger = level.NewFilter(logger, filterOption)
+
+	switch strings.ToLower(cfg.Logs.Level) {
+	case "error":
+		logger = level.NewFilter(logger, level.AllowError())
+	case "warn":
+		logger = level.NewFilter(logger, level.AllowWarn())
+	case "info":
+		logger = level.NewFilter(logger, level.AllowInfo())
+	case "debug":
+		logger = level.NewFilter(logger, level.AllowDebug())
+	default:
+		logger = level.NewFilter(logger, level.AllowInfo())
+	}
 	logger = log.With(logger,
 		"ts", log.DefaultTimestampUTC,
 		"caller", log.DefaultCaller,
