@@ -91,3 +91,29 @@ func TestConnectedClientsParsedCorrectly(t *testing.T) {
 		t.Errorf("Clients are not parsed correctly")
 	}
 }
+
+const badFields = `OpenVPN CLIENT LIST
+Updated,test
+Common Name,Real Address,Bytes Received,Bytes Sent,Connected Since
+user1,1.2.3.4,foo,foo,test
+ROUTING TABLE
+Virtual Address,Common Name,Real Address,Last Ref
+10.240.1.222,user4,1.2.3.7:fooo,test
+GLOBAL STATS
+Max bcast/mcast queue length,foo
+END
+`
+
+func TestParsingWrongValuesIsNotAnIssue(t *testing.T) {
+	status, e := parse(bufio.NewReader(strings.NewReader(badFields)))
+	if e != nil {
+		t.Errorf("should have worked")
+	}
+	if status.GlobalStats.MaxBcastMcastQueueLen != 0 {
+		t.Errorf("Parsing wrong MaxBcastMcastQueueLen value lead to unexpected result")
+	}
+	expectedTime := time.Time{}
+	if !expectedTime.Equal(status.UpdatedAt) {
+		t.Errorf("parsing incorrect time value should have yieleded a default time object")
+	}
+}

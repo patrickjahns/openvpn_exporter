@@ -12,6 +12,7 @@ type OpenVPNCollector struct {
 	logger                log.Logger
 	name                  string
 	statusFile            string
+	collectClientMetrics  bool
 	LastUpdated           *prometheus.Desc
 	ConnectedClients      *prometheus.Desc
 	BytesReceived         *prometheus.Desc
@@ -21,11 +22,12 @@ type OpenVPNCollector struct {
 }
 
 // NewOpenVPNCollector returns a new OpenVPNCollector
-func NewOpenVPNCollector(logger log.Logger, name string, statusFile string) *OpenVPNCollector {
+func NewOpenVPNCollector(logger log.Logger, name string, statusFile string, collectClientMetrics bool) *OpenVPNCollector {
 	return &OpenVPNCollector{
-		logger:     logger,
-		statusFile: statusFile,
-		name:       name,
+		logger:               logger,
+		statusFile:           statusFile,
+		name:                 name,
+		collectClientMetrics: collectClientMetrics,
 
 		LastUpdated: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "last_updated"),
@@ -70,10 +72,12 @@ func NewOpenVPNCollector(logger log.Logger, name string, statusFile string) *Ope
 func (c *OpenVPNCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.LastUpdated
 	ch <- c.ConnectedClients
-	ch <- c.BytesSent
-	ch <- c.BytesReceived
-	ch <- c.ConnectedSince
 	ch <- c.MaxBcastMcastQueueLen
+	if c.collectClientMetrics {
+		ch <- c.BytesSent
+		ch <- c.BytesReceived
+		ch <- c.ConnectedSince
+	}
 }
 
 // Collect is called by the Prometheus registry when collecting metrics.
@@ -100,24 +104,26 @@ func (c *OpenVPNCollector) Collect(ch chan<- prometheus.Metric) {
 			"bytesReceived", client.BytesReceived,
 			"bytesSent", client.BytesSent,
 		)
-		ch <- prometheus.MustNewConstMetric(
-			c.BytesReceived,
-			prometheus.GaugeValue,
-			client.BytesReceived,
-			c.name, client.CommonName,
-		)
-		ch <- prometheus.MustNewConstMetric(
-			c.BytesSent,
-			prometheus.GaugeValue,
-			client.BytesSent,
-			c.name, client.CommonName,
-		)
-		ch <- prometheus.MustNewConstMetric(
-			c.ConnectedSince,
-			prometheus.GaugeValue,
-			float64(client.ConnectedSince.Unix()),
-			c.name, client.CommonName,
-		)
+		if c.collectClientMetrics {
+			ch <- prometheus.MustNewConstMetric(
+				c.BytesReceived,
+				prometheus.GaugeValue,
+				client.BytesReceived,
+				c.name, client.CommonName,
+			)
+			ch <- prometheus.MustNewConstMetric(
+				c.BytesSent,
+				prometheus.GaugeValue,
+				client.BytesSent,
+				c.name, client.CommonName,
+			)
+			ch <- prometheus.MustNewConstMetric(
+				c.ConnectedSince,
+				prometheus.GaugeValue,
+				float64(client.ConnectedSince.Unix()),
+				c.name, client.CommonName,
+			)
+		}
 	}
 	level.Debug(c.logger).Log(
 		"updatedAt", status.UpdatedAt,
