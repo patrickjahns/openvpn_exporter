@@ -68,10 +68,15 @@ func Run() error {
 			Usage:    "The OpenVPN status file(s) to export (example test:./example/version1.status )",
 			Required: true,
 		},
+		&cli.BoolFlag{
+			Name:  "disable-client-metrics",
+			Usage: "Disables per client (bytes_received, bytes_sent, connected_since) metrics",
+		},
 	}
 
 	app.Before = func(c *cli.Context) error {
-		cfg.StatusFile = c.StringSlice("status-file")
+		cfg.StatusCollector.StatusFile = c.StringSlice("status-file")
+		cfg.StatusCollector.ExportClientMetrics = !c.Bool("disable-client-metrics")
 		return nil
 	}
 
@@ -105,7 +110,7 @@ func run(c *cli.Context, cfg *config.Config) error {
 		version.GoVersion,
 		version.Started,
 	))
-	for _, statusFile := range cfg.StatusFile {
+	for _, statusFile := range cfg.StatusCollector.StatusFile {
 		serverName, statusFile := parseStatusFileSlice(statusFile)
 
 		level.Info(logger).Log(
@@ -117,6 +122,7 @@ func run(c *cli.Context, cfg *config.Config) error {
 			logger,
 			serverName,
 			statusFile,
+			cfg.StatusCollector.ExportClientMetrics,
 		))
 	}
 

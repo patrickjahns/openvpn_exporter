@@ -14,9 +14,15 @@ type Logs struct {
 
 // Config defines the general configuration object
 type Config struct {
-	Server     Server
-	Logs       Logs
-	StatusFile []string
+	Server          Server
+	Logs            Logs
+	StatusCollector StatusCollector
+}
+
+// StatusCollector contains configuration for the OpenVPN status collector
+type StatusCollector struct {
+	ExportClientMetrics bool
+	StatusFile          []string
 }
 
 // Load initializes a default configuration struct.
