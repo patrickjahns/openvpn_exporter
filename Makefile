@@ -53,6 +53,10 @@ fmt:
 vet:
 	$(GO) vet $(PACKAGES)
 
+.PHONY: generate
+generate:
+	$(GO) generate $(GENERATE)
+
 .PHONY: lint
 lint:
 	@which golint > /dev/null; if [ $$? -ne 0 ]; then \
