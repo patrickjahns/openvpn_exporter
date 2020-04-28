@@ -60,14 +60,14 @@ generate:
 .PHONY: lint
 lint:
 	@which golint > /dev/null; if [ $$? -ne 0 ]; then \
-		$(GO) get -u golang.org/x/lint/golint; \
+		GO111MODULE=off $(GO) get -u golang.org/x/lint/golint; \
 	fi
 	for PKG in $(PACKAGES); do golint -set_exit_status $$PKG || exit 1; done;
 
 .PHONY: test
 test:
 	@which goverage > /dev/null; if [ $$? -ne 0 ]; then \
-		$(GO) get -u github.com/haya14busa/goverage; \
+		GO111MODULE=off $(GO) get -u github.com/haya14busa/goverage; \
 	fi
 	goverage -v -coverprofile coverage.out $(PACKAGES)
 
@@ -87,7 +87,7 @@ release-dirs:
 .PHONY: release-build
 release-build:
 	@which gox > /dev/null; if [ $$? -ne 0 ]; then \
-		$(GO) get -u github.com/mitchellh/gox; \
+		GO111MODULE=off  $(GO) get -u github.com/mitchellh/gox; \
 	fi
 	gox -arch="386 amd64 arm" -verbose -ldflags '-w $(LDFLAGS)' -output="$(DIST)/$(EXECUTABLE)-{{.OS}}-{{.Arch}}" ./cmd/$(NAME)
 
