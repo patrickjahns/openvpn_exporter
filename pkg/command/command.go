@@ -72,6 +72,12 @@ func Run() error {
 			Name:  "disable-client-metrics",
 			Usage: "Disables per client (bytes_received, bytes_sent, connected_since) metrics",
 		},
+		&cli.BoolFlag{
+			Name:        "enable-golang-metrics",
+			Value:       false,
+			Usage:       "Enables golang and process metrics for the exporter) ",
+			Destination: &cfg.ExportGoMetrics,
+		},
 	}
 
 	app.Before = func(c *cli.Context) error {
@@ -98,10 +104,12 @@ func run(c *cli.Context, cfg *config.Config) error {
 		"goVersion", version.GoVersion,
 	)
 
-	// enable profiler
 	r := prometheus.NewRegistry()
-	r.MustRegister(prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{}))
-	r.MustRegister(prometheus.NewGoCollector())
+	if cfg.ExportGoMetrics {
+		// enable profiler
+		r.MustRegister(prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{}))
+		r.MustRegister(prometheus.NewGoCollector())
+	}
 	r.MustRegister(collector.NewGeneralCollector(
 		logger,
 		version.Version,
