@@ -38,7 +38,7 @@ func NewGeneralCollector(logger log.Logger, version string, revision string, bui
 
 		StartTime: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "start_time"),
-			"Unix timestamp of the start time",
+			"Unix timestamp of the start time of the exporter",
 			nil,
 			nil,
 		),
