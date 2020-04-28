@@ -48,6 +48,7 @@ func Run() error {
 			Aliases:     []string{"web.listen-address"},
 			Value:       "0.0.0.0:9176",
 			Usage:       "Address to bind the metrics server",
+			EnvVars: 	 []string{"OPENVPN_EXPORTER_WEB_ADDRESS"},
 			Destination: &cfg.Server.Addr,
 		},
 		&cli.StringFlag{
@@ -55,22 +56,33 @@ func Run() error {
 			Aliases:     []string{"web.telemetry-path"},
 			Value:       "/metrics",
 			Usage:       "Path to bind the metrics server",
+			EnvVars: 	 []string{"OPENVPN_EXPORTER_WEB_PATH"},
 			Destination: &cfg.Server.Path,
 		},
 		&cli.StringFlag{
 			Name:        "web.root",
 			Value:       "/",
 			Usage:       "Root path to exporter endpoints",
+			EnvVars: 	 []string{"OPENVPN_EXPORTER_WEB_ROOT"},
 			Destination: &cfg.Server.Root,
 		},
 		&cli.StringSliceFlag{
 			Name:     "status-file",
 			Usage:    "The OpenVPN status file(s) to export (example test:./example/version1.status )",
+			EnvVars: 	 []string{"OPENVPN_EXPORTER_STATUS_FILE"},
 			Required: true,
 		},
 		&cli.BoolFlag{
 			Name:  "disable-client-metrics",
 			Usage: "Disables per client (bytes_received, bytes_sent, connected_since) metrics",
+			EnvVars: 	 []string{"OPENVPN_EXPORTER_DISABLE_CLIENT_METRICS"},
+		},
+		&cli.BoolFlag{
+			Name:        "enable-golang-metrics",
+			Value:       false,
+			Usage:       "Enables golang and process metrics for the exporter) ",
+			EnvVars: 	 []string{"OPENVPN_EXPORTER_ENABLE_GOLANG_METRICS"},
+			Destination: &cfg.ExportGoMetrics,
 		},
 	}
 
@@ -98,10 +110,12 @@ func run(c *cli.Context, cfg *config.Config) error {
 		"goVersion", version.GoVersion,
 	)
 
-	// enable profiler
 	r := prometheus.NewRegistry()
-	r.MustRegister(prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{}))
-	r.MustRegister(prometheus.NewGoCollector())
+	if cfg.ExportGoMetrics {
+		// enable profiler
+		r.MustRegister(prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{}))
+		r.MustRegister(prometheus.NewGoCollector())
+	}
 	r.MustRegister(collector.NewGeneralCollector(
 		logger,
 		version.Version,
@@ -152,7 +166,7 @@ func parseStatusFileSlice(statusFile string) (string, string) {
 	if len(parts) > 1 {
 		return parts[0], parts[1]
 	}
-	return "server", parts[0]
+	return parts[0], parts[0]
 }
 
 func setupLogging(cfg *config.Config) log.Logger {

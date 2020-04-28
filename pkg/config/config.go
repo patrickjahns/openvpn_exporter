@@ -17,6 +17,7 @@ type Config struct {
 	Server          Server
 	Logs            Logs
 	StatusCollector StatusCollector
+	ExportGoMetrics bool
 }
 
 // StatusCollector contains configuration for the OpenVPN status collector
