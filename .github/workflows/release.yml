@@ -1,7 +1,8 @@
 name: Release Actions
 on:
-  release:
-    types: [created]
+  push:
+    tags:
+      - '*'
 
 jobs:
   default:
@@ -16,9 +17,11 @@ jobs:
         run: echo ::set-env name=VERSION::$(echo ${GITHUB_REF} | rev | cut -d'/' -f 1 | rev )
       - name: Build artifacts
         run: make release VERSION=${{ env.VERSION }}
-      - name: Upload artifacts
-        uses: skx/github-action-publish-binaries@master
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload artifactes to release
+        uses: svenstaro/upload-release-action@v1-release
         with:
-          args: 'dist/*'
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: dist/*
+          tag: ${{ github.ref }}
+          overwrite: true
+          file_glob: true
