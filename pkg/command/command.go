@@ -160,7 +160,7 @@ func parseStatusFileSlice(statusFile string) (string, string) {
 	if len(parts) > 1 {
 		return parts[0], parts[1]
 	}
-	return "server", parts[0]
+	return parts[0], parts[0]
 }
 
 func setupLogging(cfg *config.Config) log.Logger {
