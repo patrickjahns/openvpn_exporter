@@ -10,9 +10,8 @@ import (
 // OpenVPNCollector collects metrics from openvpn status files
 type OpenVPNCollector struct {
 	logger                log.Logger
-	name                  string
-	statusFile            string
 	collectClientMetrics  bool
+	OpenVPNServer         []OpenVPNServer
 	LastUpdated           *prometheus.Desc
 	ConnectedClients      *prometheus.Desc
 	BytesReceived         *prometheus.Desc
@@ -22,12 +21,17 @@ type OpenVPNCollector struct {
 	ServerInfo            *prometheus.Desc
 }
 
+// OpenVPNServer contains information of which servers will be scraped
+type OpenVPNServer struct {
+	Name       string
+	StatusFile string
+}
+
 // NewOpenVPNCollector returns a new OpenVPNCollector
-func NewOpenVPNCollector(logger log.Logger, name string, statusFile string, collectClientMetrics bool) *OpenVPNCollector {
+func NewOpenVPNCollector(logger log.Logger, openVPNServer []OpenVPNServer, collectClientMetrics bool) *OpenVPNCollector {
 	return &OpenVPNCollector{
 		logger:               logger,
-		statusFile:           statusFile,
-		name:                 name,
+		OpenVPNServer:        openVPNServer,
 		collectClientMetrics: collectClientMetrics,
 
 		LastUpdated: prometheus.NewDesc(
@@ -90,11 +94,17 @@ func (c *OpenVPNCollector) Describe(ch chan<- *prometheus.Desc) {
 
 // Collect is called by the Prometheus registry when collecting metrics.
 func (c *OpenVPNCollector) Collect(ch chan<- prometheus.Metric) {
+	for _, ovpn := range c.OpenVPNServer {
+		c.collect(ovpn, ch)
+	}
+}
+
+func (c *OpenVPNCollector) collect(ovpn OpenVPNServer, ch chan<- prometheus.Metric) {
 	level.Debug(c.logger).Log(
-		"statusFile", c.statusFile,
-		"name", c.name,
+		"statusFile", ovpn.StatusFile,
+		"name", ovpn.Name,
 	)
-	status, err := openvpn.ParseFile(c.statusFile)
+	status, err := openvpn.ParseFile(ovpn.StatusFile)
 	if err != nil {
 		level.Warn(c.logger).Log(
 			"msg", "error parsing statusfile",
@@ -117,19 +127,19 @@ func (c *OpenVPNCollector) Collect(ch chan<- prometheus.Metric) {
 				c.BytesReceived,
 				prometheus.GaugeValue,
 				client.BytesReceived,
-				c.name, client.CommonName,
+				ovpn.Name, client.CommonName,
 			)
 			ch <- prometheus.MustNewConstMetric(
 				c.BytesSent,
 				prometheus.GaugeValue,
 				client.BytesSent,
-				c.name, client.CommonName,
+				ovpn.Name, client.CommonName,
 			)
 			ch <- prometheus.MustNewConstMetric(
 				c.ConnectedSince,
 				prometheus.GaugeValue,
 				float64(client.ConnectedSince.Unix()),
-				c.name, client.CommonName,
+				ovpn.Name, client.CommonName,
 			)
 		}
 	}
@@ -142,25 +152,25 @@ func (c *OpenVPNCollector) Collect(ch chan<- prometheus.Metric) {
 		c.ConnectedClients,
 		prometheus.GaugeValue,
 		float64(connectedClients),
-		c.name,
+		ovpn.Name,
 	)
 	ch <- prometheus.MustNewConstMetric(
 		c.LastUpdated,
 		prometheus.GaugeValue,
 		float64(status.UpdatedAt.Unix()),
-		c.name,
+		ovpn.Name,
 	)
 	ch <- prometheus.MustNewConstMetric(
 		c.MaxBcastMcastQueueLen,
 		prometheus.GaugeValue,
 		float64(status.GlobalStats.MaxBcastMcastQueueLen),
-		c.name,
+		ovpn.Name,
 	)
 	ch <- prometheus.MustNewConstMetric(
 		c.ServerInfo,
 		prometheus.GaugeValue,
 		1.0,
-		c.name,
+		ovpn.Name,
 		status.ServerInfo.Version,
 		status.ServerInfo.Arch,
 	)
