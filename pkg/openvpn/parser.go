@@ -116,5 +116,16 @@ func parseStatusV1(reader *bufio.Reader) (*Status, error) {
 }
 
 func parseStatusV2(reader *bufio.Reader) (*Status, error) {
-	return nil, nil
+	scanner := bufio.NewScanner(reader)
+	var lastUpdatedAt time.Time
+	for scanner.Scan() {
+		fields := strings.Split(scanner.Text(), ",")
+		if fields[0] == "TIME" && len(fields) == 3 {
+			updatedAtInt, _ := strconv.ParseInt(fields[2], 10, 64)
+			lastUpdatedAt = time.Unix(updatedAtInt,0)
+		}
+	}
+	return &Status{
+		UpdatedAt:   lastUpdatedAt,
+	}, nil
 }

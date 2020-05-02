@@ -130,8 +130,12 @@ GLOBAL_STATS,Max bcast/mcast queue length,0
 END
 `
 func TestConnectedClientsParsedCorrectlyWithStatusVersion2(t *testing.T) {
-	_, e := parse(bufio.NewReader(strings.NewReader(connectedClientsV2)))
+	status, e := parse(bufio.NewReader(strings.NewReader(connectedClientsV2)))
 	if e != nil {
 		t.Errorf("should have worked")
+	}
+	expectedTime := time.Unix(1588254944, 0)
+	if !expectedTime.Equal(status.UpdatedAt) {
+		t.Errorf("failed parsing updated at")
 	}
 }
