@@ -138,4 +138,17 @@ func TestConnectedClientsParsedCorrectlyWithStatusVersion2(t *testing.T) {
 	if !expectedTime.Equal(status.UpdatedAt) {
 		t.Errorf("failed parsing updated at")
 	}
+	if len(status.ClientList) != 2 {
+		t.Errorf("Clients are not parsed correctly")
+	}
+	if status.ClientList[0].CommonName != "test@localhost" {
+		t.Errorf("Clients are not parsed correctly")
+	}
+	if status.ClientList[0].RealAddress != "1.2.3.4" {
+		t.Errorf("Clients are not parsed correctly")
+	}
+	expectedClientTime := time.Unix(1588254938, 0)
+	if !expectedClientTime.Equal(status.ClientList[0].ConnectedSince) {
+		t.Errorf("Clients are not parsed correctly")
+	}
 }

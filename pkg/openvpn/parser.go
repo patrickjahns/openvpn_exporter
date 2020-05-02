@@ -117,15 +117,36 @@ func parseStatusV1(reader *bufio.Reader) (*Status, error) {
 
 func parseStatusV2(reader *bufio.Reader) (*Status, error) {
 	scanner := bufio.NewScanner(reader)
+	var maxBcastMcastQueueLen int
 	var lastUpdatedAt time.Time
+	var clients []Client
 	for scanner.Scan() {
 		fields := strings.Split(scanner.Text(), ",")
 		if fields[0] == "TIME" && len(fields) == 3 {
 			updatedAtInt, _ := strconv.ParseInt(fields[2], 10, 64)
 			lastUpdatedAt = time.Unix(updatedAtInt,0)
+		} else if fields[0] == "CLIENT_LIST" {
+			bytesRec, _ := strconv.ParseFloat(fields[5], 64)
+			bytesSent, _ := strconv.ParseFloat(fields[6], 64)
+			connectedSinceInt, _ := strconv.ParseInt(fields[8], 10, 64)
+			client := Client{
+				CommonName:     fields[1],
+				RealAddress:    parseIP(fields[2]),
+				BytesReceived:  bytesRec,
+				BytesSent:      bytesSent,
+				ConnectedSince: time.Unix(connectedSinceInt,0),
+			}
+			clients = append(clients, client)
+		} else if fields[0] == "GLOBAL_STATS" {
+			i, err := strconv.Atoi(fields[2])
+			if err == nil {
+				maxBcastMcastQueueLen = i
+			}
 		}
 	}
 	return &Status{
+		GlobalStats: GlobalStats{maxBcastMcastQueueLen},
 		UpdatedAt:   lastUpdatedAt,
+		ClientList:  clients,
 	}, nil
 }
