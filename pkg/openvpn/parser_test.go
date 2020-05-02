@@ -129,6 +129,7 @@ ROUTING_TABLE,10.68.0.25,test1@localhost,1.2.3.5:51053,Thu Apr 30 13:55:42 2020,
 GLOBAL_STATS,Max bcast/mcast queue length,0
 END
 `
+
 func TestConnectedClientsParsedCorrectlyWithStatusVersion2(t *testing.T) {
 	status, e := parse(bufio.NewReader(strings.NewReader(connectedClientsV2)))
 	if e != nil {
