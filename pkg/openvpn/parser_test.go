@@ -153,3 +153,29 @@ func TestConnectedClientsParsedCorrectlyWithStatusVersion2(t *testing.T) {
 		t.Errorf("Clients are not parsed correctly")
 	}
 }
+
+func TestServerInfoIsParsedCorrectlyWithStatusVersion2(t *testing.T) {
+	status, _ := parse(bufio.NewReader(strings.NewReader(connectedClientsV2)))
+	if status.ServerInfo.Version != "2.4.4" {
+		t.Errorf("version is not parsed correctly")
+	}
+	if status.ServerInfo.Arch != "x86_64-pc-linux-gnu" {
+		t.Errorf("arch is not parsed correctly")
+	}
+	if status.ServerInfo.AdditionalInfo != "[SSL (OpenSSL)] [LZO] [LZ4] [EPOLL] [PKCS11] [MH/PKTINFO] [AEAD] built on May 14 2019" {
+		t.Errorf("additional info is not parsed correctly")
+	}
+}
+
+func TestServerInfoIsParsedCorrectlyWithStatusVersion1(t *testing.T) {
+	status, _ := parse(bufio.NewReader(strings.NewReader(connectedClients)))
+	if status.ServerInfo.Version != "unknown" {
+		t.Errorf("version is not parsed correctly")
+	}
+	if status.ServerInfo.Arch != "unknown" {
+		t.Errorf("arch is not parsed correctly")
+	}
+	if status.ServerInfo.AdditionalInfo != "unknown" {
+		t.Errorf("additional info is not parsed correctly")
+	}
+}

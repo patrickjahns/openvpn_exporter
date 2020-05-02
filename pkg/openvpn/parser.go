@@ -24,10 +24,18 @@ type Client struct {
 	ConnectedSince time.Time
 }
 
+// ServerInfo reflects information that was collected about the server
+type ServerInfo struct {
+	Version        string
+	Arch           string
+	AdditionalInfo string
+}
+
 // Status reflects all information in a status log
 type Status struct {
 	ClientList  []Client
 	GlobalStats GlobalStats
+	ServerInfo  ServerInfo
 	UpdatedAt   time.Time
 }
 
@@ -111,6 +119,7 @@ func parseStatusV1(reader *bufio.Reader) (*Status, error) {
 		GlobalStats: GlobalStats{maxBcastMcastQueueLen},
 		UpdatedAt:   lastUpdatedAt,
 		ClientList:  clients,
+		ServerInfo:  ServerInfo{Version: "unknown", Arch: "unknown", AdditionalInfo: "unknown"},
 	}, nil
 }
 
@@ -119,6 +128,7 @@ func parseStatusV2(reader *bufio.Reader) (*Status, error) {
 	var maxBcastMcastQueueLen int
 	var lastUpdatedAt time.Time
 	var clients []Client
+	var serverInfo ServerInfo
 	for scanner.Scan() {
 		fields := strings.Split(scanner.Text(), ",")
 		if fields[0] == "TIME" && len(fields) == 3 {
@@ -141,11 +151,19 @@ func parseStatusV2(reader *bufio.Reader) (*Status, error) {
 			if err == nil {
 				maxBcastMcastQueueLen = i
 			}
+		} else if fields[0] == "TITLE" {
+			infoFields := strings.Split(fields[1], " ")
+			serverInfo = ServerInfo{
+				Version:        infoFields[1],
+				Arch:           infoFields[2],
+				AdditionalInfo: strings.Join(infoFields[3:], " "),
+			}
 		}
 	}
 	return &Status{
 		GlobalStats: GlobalStats{maxBcastMcastQueueLen},
 		UpdatedAt:   lastUpdatedAt,
 		ClientList:  clients,
+		ServerInfo:  serverInfo,
 	}, nil
 }

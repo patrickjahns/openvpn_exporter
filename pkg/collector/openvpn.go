@@ -19,6 +19,7 @@ type OpenVPNCollector struct {
 	BytesSent             *prometheus.Desc
 	ConnectedSince        *prometheus.Desc
 	MaxBcastMcastQueueLen *prometheus.Desc
+	ServerInfo            *prometheus.Desc
 }
 
 // NewOpenVPNCollector returns a new OpenVPNCollector
@@ -65,6 +66,12 @@ func NewOpenVPNCollector(logger log.Logger, name string, statusFile string, coll
 			[]string{"server", "common_name"},
 			nil,
 		),
+		ServerInfo: prometheus.NewDesc(
+			prometheus.BuildFQName(namespace, "", "server_info"),
+			"A metric with a constant '1' value labeled by version information",
+			[]string{"server", "version", "arch"},
+			nil,
+		),
 	}
 }
 
@@ -73,6 +80,7 @@ func (c *OpenVPNCollector) Describe(ch chan<- *prometheus.Desc) {
 	ch <- c.LastUpdated
 	ch <- c.ConnectedClients
 	ch <- c.MaxBcastMcastQueueLen
+	ch <- c.ServerInfo
 	if c.collectClientMetrics {
 		ch <- c.BytesSent
 		ch <- c.BytesReceived
@@ -147,5 +155,13 @@ func (c *OpenVPNCollector) Collect(ch chan<- prometheus.Metric) {
 		prometheus.GaugeValue,
 		float64(status.GlobalStats.MaxBcastMcastQueueLen),
 		c.name,
+	)
+	ch <- prometheus.MustNewConstMetric(
+		c.ServerInfo,
+		prometheus.GaugeValue,
+		1.0,
+		c.name,
+		status.ServerInfo.Version,
+		status.ServerInfo.Arch,
 	)
 }
