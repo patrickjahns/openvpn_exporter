@@ -24,10 +24,18 @@ type Client struct {
 	ConnectedSince time.Time
 }
 
+// ServerInfo reflects information that was collected about the server
+type ServerInfo struct {
+	Version        string
+	Arch           string
+	AdditionalInfo string
+}
+
 // Status reflects all information in a status log
 type Status struct {
 	ClientList  []Client
 	GlobalStats GlobalStats
+	ServerInfo  ServerInfo
 	UpdatedAt   time.Time
 }
 
@@ -68,11 +76,18 @@ func parseIP(ip string) string {
 }
 
 func parse(reader *bufio.Reader) (*Status, error) {
-	scanner := bufio.NewScanner(reader)
 	buf, _ := reader.Peek(19)
-	if !bytes.HasPrefix(buf, []byte("OpenVPN CLIENT LIST")) {
-		return nil, &parseError{"bad status file"}
+	if bytes.HasPrefix(buf, []byte("OpenVPN CLIENT LIST")) {
+		return parseStatusV1(reader)
 	}
+	if bytes.HasPrefix(buf, []byte("TITLE,OpenVPN")) {
+		return parseStatusV2(reader)
+	}
+	return nil, &parseError{"bad status file"}
+}
+
+func parseStatusV1(reader *bufio.Reader) (*Status, error) {
+	scanner := bufio.NewScanner(reader)
 	var lastUpdatedAt time.Time
 	var maxBcastMcastQueueLen int
 	var clients []Client
@@ -104,5 +119,51 @@ func parse(reader *bufio.Reader) (*Status, error) {
 		GlobalStats: GlobalStats{maxBcastMcastQueueLen},
 		UpdatedAt:   lastUpdatedAt,
 		ClientList:  clients,
+		ServerInfo:  ServerInfo{Version: "unknown", Arch: "unknown", AdditionalInfo: "unknown"},
+	}, nil
+}
+
+func parseStatusV2(reader *bufio.Reader) (*Status, error) {
+	scanner := bufio.NewScanner(reader)
+	var maxBcastMcastQueueLen int
+	var lastUpdatedAt time.Time
+	var clients []Client
+	var serverInfo ServerInfo
+	for scanner.Scan() {
+		fields := strings.Split(scanner.Text(), ",")
+		if fields[0] == "TIME" && len(fields) == 3 {
+			updatedAtInt, _ := strconv.ParseInt(fields[2], 10, 64)
+			lastUpdatedAt = time.Unix(updatedAtInt, 0)
+		} else if fields[0] == "CLIENT_LIST" {
+			bytesRec, _ := strconv.ParseFloat(fields[5], 64)
+			bytesSent, _ := strconv.ParseFloat(fields[6], 64)
+			connectedSinceInt, _ := strconv.ParseInt(fields[8], 10, 64)
+			client := Client{
+				CommonName:     fields[1],
+				RealAddress:    parseIP(fields[2]),
+				BytesReceived:  bytesRec,
+				BytesSent:      bytesSent,
+				ConnectedSince: time.Unix(connectedSinceInt, 0),
+			}
+			clients = append(clients, client)
+		} else if fields[0] == "GLOBAL_STATS" {
+			i, err := strconv.Atoi(fields[2])
+			if err == nil {
+				maxBcastMcastQueueLen = i
+			}
+		} else if fields[0] == "TITLE" {
+			infoFields := strings.Split(fields[1], " ")
+			serverInfo = ServerInfo{
+				Version:        infoFields[1],
+				Arch:           infoFields[2],
+				AdditionalInfo: strings.Join(infoFields[3:], " "),
+			}
+		}
+	}
+	return &Status{
+		GlobalStats: GlobalStats{maxBcastMcastQueueLen},
+		UpdatedAt:   lastUpdatedAt,
+		ClientList:  clients,
+		ServerInfo:  serverInfo,
 	}, nil
 }
