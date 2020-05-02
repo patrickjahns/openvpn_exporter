@@ -116,7 +116,7 @@ func run(c *cli.Context, cfg *config.Config) error {
 		"buildDate", version.BuildDate,
 		"goVersion", version.GoVersion,
 	)
-
+	var openVPServers []collector.OpenVPNServer
 	r := prometheus.NewRegistry()
 	if cfg.ExportGoMetrics {
 		// enable profiler
@@ -133,19 +133,18 @@ func run(c *cli.Context, cfg *config.Config) error {
 	))
 	for _, statusFile := range cfg.StatusCollector.StatusFile {
 		serverName, statusFile := parseStatusFileSlice(statusFile)
-
 		level.Info(logger).Log(
 			"msg", "registering collector for",
 			"serverName", serverName,
 			"statusFile", statusFile,
 		)
-		r.MustRegister(collector.NewOpenVPNCollector(
-			logger,
-			serverName,
-			statusFile,
-			cfg.StatusCollector.ExportClientMetrics,
-		))
+		openVPServers = append(openVPServers, collector.OpenVPNServer{Name: serverName, StatusFile: statusFile})
 	}
+	r.MustRegister(collector.NewOpenVPNCollector(
+		logger,
+		openVPServers,
+		cfg.StatusCollector.ExportClientMetrics,
+	))
 
 	http.Handle(cfg.Server.Path,
 		promhttp.HandlerFor(r, promhttp.HandlerOpts{}),
