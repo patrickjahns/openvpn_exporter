@@ -84,6 +84,13 @@ func Run() error {
 			EnvVars:     []string{"OPENVPN_EXPORTER_ENABLE_GOLANG_METRICS"},
 			Destination: &cfg.ExportGoMetrics,
 		},
+		&cli.StringFlag{
+			Name:        "log.level",
+			Value:       "info",
+			Usage:       "Only log messages with given severity",
+			EnvVars:     []string{"OPENVPN_EXPORTER_LOG_LEVEL"},
+			Destination: &cfg.Logs.Level,
+		},
 	}
 
 	app.Before = func(c *cli.Context) error {
