@@ -68,11 +68,19 @@ func parseIP(ip string) string {
 }
 
 func parse(reader *bufio.Reader) (*Status, error) {
-	scanner := bufio.NewScanner(reader)
 	buf, _ := reader.Peek(19)
-	if !bytes.HasPrefix(buf, []byte("OpenVPN CLIENT LIST")) {
-		return nil, &parseError{"bad status file"}
+	if bytes.HasPrefix(buf, []byte("OpenVPN CLIENT LIST")) {
+		return parseStatusV1(reader)
 	}
+	if bytes.HasPrefix(buf, []byte("TITLE,OpenVPN")) {
+		return parseStatusV2(reader)
+	}
+	return nil, &parseError{"bad status file"}
+}
+
+
+func parseStatusV1(reader *bufio.Reader) (*Status, error) {
+	scanner := bufio.NewScanner(reader)
 	var lastUpdatedAt time.Time
 	var maxBcastMcastQueueLen int
 	var clients []Client
@@ -105,4 +113,8 @@ func parse(reader *bufio.Reader) (*Status, error) {
 		UpdatedAt:   lastUpdatedAt,
 		ClientList:  clients,
 	}, nil
+}
+
+func parseStatusV2(reader *bufio.Reader) (*Status, error) {
+	return nil, nil
 }
