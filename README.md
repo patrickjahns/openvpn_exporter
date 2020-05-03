@@ -6,7 +6,7 @@
 [![Go Doc](https://img.shields.io/badge/go.dev-reference-007d9c?logo=go&logoColor=white)](https://pkg.go.dev/github.com/patrickjahns/openvpn_exporter)
 [![Go Report Card](https://goreportcard.com/badge/github.com/patrickjahns/openvpn_exporter)](https://goreportcard.com/report/github.com/patrickjahns/openvpn_exporter)
 
-Prometheus exporter for openvpn. Exposes the metrics from [openvpn status file](https://openvpn.net/community-resources/reference-manual-for-openvpn-2-4/) - currently supports format version 1
+Prometheus exporter for openvpn. Exposes the metrics from [openvpn status file](https://openvpn.net/community-resources/reference-manual-for-openvpn-2-4/) - supports status-version 1-3
 
 
 ## Installation
