@@ -141,42 +141,56 @@ func TestParsingWrongValuesIsNotAnIssue(t *testing.T) {
 	}
 }
 
+var correctlyParsedTestCases = []struct {
+	StatusVersionName        string
+	StatusFileContents       string
+	UpdatedAt                time.Time
+	NumberOfConnectedClients int
+	Client0CommonNamme       string
+	Client0Address           string
+	Client0ConnectedSince    time.Time
+}{
+	{"v2", connectedClientsV2, time.Unix(1588254944, 0), 2, "test@localhost", "1.2.3.4", time.Unix(1588254938, 0)},
+	{"v3", connectedClientsV3, time.Unix(1588254944, 0), 2, "test@localhost", "1.2.3.4", time.Unix(1588254938, 0)},
+}
 
+func TestConnectedClientsParsedCorrectlyV2V3(t *testing.T) {
+	for _, tt := range correctlyParsedTestcases {
+		t.Run(tt.StatusVersionName, func(t *testing.T) {
+			status, e := parse(bufio.NewReader(strings.NewReader(tt.StatusFileContents)))
+			if e != nil {
+				t.Errorf("should have worked")
+			}
+			if !tt.UpdatedAt.Equal(status.UpdatedAt) {
+				t.Errorf("failed parsing updated at")
+			}
+			if len(status.ClientList) != tt.NumberOfConnectedClients {
+				t.Errorf("Clients are not parsed correctly")
+			}
+			if status.ClientList[0].CommonName != tt.Client0CommonNamme {
+				t.Errorf("Clients are not parsed correctly")
+			}
+			if status.ClientList[0].RealAddress != tt.Client0Address {
+				t.Errorf("Clients are not parsed correctly")
+			}
+			if !tt.Client0ConnectedSince.Equal(status.ClientList[0].ConnectedSince) {
+				t.Errorf("Clients are not parsed correctly")
+			}
+		})
+	}
 
-func TestConnectedClientsParsedCorrectlyWithStatusVersion2(t *testing.T) {
-	status, e := parse(bufio.NewReader(strings.NewReader(connectedClientsV2)))
-	if e != nil {
-		t.Errorf("should have worked")
-	}
-	expectedTime := time.Unix(1588254944, 0)
-	if !expectedTime.Equal(status.UpdatedAt) {
-		t.Errorf("failed parsing updated at")
-	}
-	if len(status.ClientList) != 2 {
-		t.Errorf("Clients are not parsed correctly")
-	}
-	if status.ClientList[0].CommonName != "test@localhost" {
-		t.Errorf("Clients are not parsed correctly")
-	}
-	if status.ClientList[0].RealAddress != "1.2.3.4" {
-		t.Errorf("Clients are not parsed correctly")
-	}
-	expectedClientTime := time.Unix(1588254938, 0)
-	if !expectedClientTime.Equal(status.ClientList[0].ConnectedSince) {
-		t.Errorf("Clients are not parsed correctly")
-	}
 }
 
 var serverInfoTestCases = []struct {
-	StatusVersionName string
-	StatusFileContents string
-	ServerInfoVersion string
-	ServerInfoArch string
+	StatusVersionName        string
+	StatusFileContents       string
+	ServerInfoVersion        string
+	ServerInfoArch           string
 	ServerInfoAdditionalInfo string
-} {
+}{
 	{"v1", connectedClientsV1, "unknown", "unknown", "unknown"},
-	{"v2",connectedClientsV2, "2.4.4", "x86_64-pc-linux-gnu", "[SSL (OpenSSL)] [LZO] [LZ4] [EPOLL] [PKCS11] [MH/PKTINFO] [AEAD] built on May 14 2019"},
-	{"v3",connectedClientsV3, "2.4.4", "x86_64-pc-linux-gnu", "[SSL (OpenSSL)] [LZO] [LZ4] [EPOLL] [PKCS11] [MH/PKTINFO] [AEAD] built on May 14 2019"},
+	{"v2", connectedClientsV2, "2.4.4", "x86_64-pc-linux-gnu", "[SSL (OpenSSL)] [LZO] [LZ4] [EPOLL] [PKCS11] [MH/PKTINFO] [AEAD] built on May 14 2019"},
+	{"v3", connectedClientsV3, "2.4.4", "x86_64-pc-linux-gnu", "[SSL (OpenSSL)] [LZO] [LZ4] [EPOLL] [PKCS11] [MH/PKTINFO] [AEAD] built on May 14 2019"},
 }
 
 func TestServerInfoIsParsedCorrectly(t *testing.T) {
