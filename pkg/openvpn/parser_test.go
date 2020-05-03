@@ -87,32 +87,51 @@ GLOBAL_STATS	Max bcast/mcast queue length	0
 END
 `
 
-func TestConnectedClientsParsedCorrectly(t *testing.T) {
-	status, e := parse(bufio.NewReader(strings.NewReader(connectedClientsV1)))
-	if e != nil {
-		t.Errorf("should have worked")
-	}
+func parseDate(dateToParse string) time.Time {
 	loc, _ := time.LoadLocation("Local")
-	expectedTime, _ := time.ParseInLocation(timefmt, "Thu Apr 23 20:14:31 2020", loc)
-	if !expectedTime.Equal(status.UpdatedAt) {
-		t.Errorf("time was not parsed correctly")
+	expectedTime, _ := time.ParseInLocation(timefmt, dateToParse, loc)
+	return expectedTime
+}
+
+var correctlyParsedTestCases = []struct {
+	StatusVersionName        string
+	StatusFileContents       string
+	UpdatedAt                time.Time
+	NumberOfConnectedClients int
+	Client0CommonNamme       string
+	Client0Address           string
+	Client0ConnectedSince    time.Time
+}{
+	{"v1", connectedClientsV1, parseDate("Thu Apr 23 20:14:31 2020"), 4, "user1", "1.2.3.4", parseDate("Wed Apr 22 12:36:42 2020")},
+	{"v2", connectedClientsV2, time.Unix(1588254944, 0), 2, "test@localhost", "1.2.3.4", time.Unix(1588254938, 0)},
+	{"v3", connectedClientsV3, time.Unix(1588254944, 0), 2, "test@localhost", "1.2.3.4", time.Unix(1588254938, 0)},
+}
+
+func TestConnectedClientsParsedCorrectly(t *testing.T) {
+	for _, tt := range correctlyParsedTestCases {
+		t.Run(tt.StatusVersionName, func(t *testing.T) {
+			status, e := parse(bufio.NewReader(strings.NewReader(tt.StatusFileContents)))
+			if e != nil {
+				t.Errorf("should have worked")
+			}
+			if !tt.UpdatedAt.Equal(status.UpdatedAt) {
+				t.Errorf("failed parsing updated at")
+			}
+			if len(status.ClientList) != tt.NumberOfConnectedClients {
+				t.Errorf("Clients are not parsed correctly")
+			}
+			if status.ClientList[0].CommonName != tt.Client0CommonNamme {
+				t.Errorf("Clients are not parsed correctly")
+			}
+			if status.ClientList[0].RealAddress != tt.Client0Address {
+				t.Errorf("Clients are not parsed correctly")
+			}
+			if !tt.Client0ConnectedSince.Equal(status.ClientList[0].ConnectedSince) {
+				t.Errorf("Clients are not parsed correctly")
+			}
+		})
 	}
-	if status.GlobalStats.MaxBcastMcastQueueLen != 5 {
-		t.Errorf("MaxBcastMcastQueueLen was not parsed correctly")
-	}
-	if len(status.ClientList) != 4 {
-		t.Errorf("Clients are not parsed correctly")
-	}
-	if status.ClientList[0].CommonName != "user1" {
-		t.Errorf("Clients are not parsed correctly")
-	}
-	if status.ClientList[0].RealAddress != "1.2.3.4" {
-		t.Errorf("Clients are not parsed correctly")
-	}
-	expectedClientTime, _ := time.ParseInLocation(timefmt, "Wed Apr 22 12:36:42 2020", loc)
-	if !expectedClientTime.Equal(status.ClientList[0].ConnectedSince) {
-		t.Errorf("Clients are not parsed correctly")
-	}
+
 }
 
 const badFields = `OpenVPN CLIENT LIST
@@ -139,46 +158,6 @@ func TestParsingWrongValuesIsNotAnIssue(t *testing.T) {
 	if !expectedTime.Equal(status.UpdatedAt) {
 		t.Errorf("parsing incorrect time value should have yieleded a default time object")
 	}
-}
-
-var correctlyParsedTestCases = []struct {
-	StatusVersionName        string
-	StatusFileContents       string
-	UpdatedAt                time.Time
-	NumberOfConnectedClients int
-	Client0CommonNamme       string
-	Client0Address           string
-	Client0ConnectedSince    time.Time
-}{
-	{"v2", connectedClientsV2, time.Unix(1588254944, 0), 2, "test@localhost", "1.2.3.4", time.Unix(1588254938, 0)},
-	{"v3", connectedClientsV3, time.Unix(1588254944, 0), 2, "test@localhost", "1.2.3.4", time.Unix(1588254938, 0)},
-}
-
-func TestConnectedClientsParsedCorrectlyV2V3(t *testing.T) {
-	for _, tt := range correctlyParsedTestcases {
-		t.Run(tt.StatusVersionName, func(t *testing.T) {
-			status, e := parse(bufio.NewReader(strings.NewReader(tt.StatusFileContents)))
-			if e != nil {
-				t.Errorf("should have worked")
-			}
-			if !tt.UpdatedAt.Equal(status.UpdatedAt) {
-				t.Errorf("failed parsing updated at")
-			}
-			if len(status.ClientList) != tt.NumberOfConnectedClients {
-				t.Errorf("Clients are not parsed correctly")
-			}
-			if status.ClientList[0].CommonName != tt.Client0CommonNamme {
-				t.Errorf("Clients are not parsed correctly")
-			}
-			if status.ClientList[0].RealAddress != tt.Client0Address {
-				t.Errorf("Clients are not parsed correctly")
-			}
-			if !tt.Client0ConnectedSince.Equal(status.ClientList[0].ConnectedSince) {
-				t.Errorf("Clients are not parsed correctly")
-			}
-		})
-	}
-
 }
 
 var serverInfoTestCases = []struct {
