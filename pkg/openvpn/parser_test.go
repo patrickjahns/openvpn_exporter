@@ -46,7 +46,7 @@ func TestNoConnectedClientsAreParsedCorrectly(t *testing.T) {
 	}
 }
 
-const connectedClients = `OpenVPN CLIENT LIST
+const connectedClientsV1 = `OpenVPN CLIENT LIST
 Updated,Thu Apr 23 20:14:31 2020
 Common Name,Real Address,Bytes Received,Bytes Sent,Connected Since
 user1,1.2.3.4:60102,7883858,7762340,Wed Apr 22 12:36:42 2020
@@ -64,8 +64,20 @@ Max bcast/mcast queue length,5
 END
 `
 
+const connectedClientsV2 = `TITLE,OpenVPN 2.4.4 x86_64-pc-linux-gnu [SSL (OpenSSL)] [LZO] [LZ4] [EPOLL] [PKCS11] [MH/PKTINFO] [AEAD] built on May 14 2019
+TIME,Thu Apr 30 13:55:44 2020,1588254944
+HEADER,CLIENT_LIST,Common Name,Real Address,Virtual Address,Virtual IPv6 Address,Bytes Received,Bytes Sent,Connected Since,Connected Since (time_t),Username,Client ID,Peer ID
+CLIENT_LIST,test@localhost,1.2.3.4:54190,10.80.0.65,,3860,3688,Thu Apr 30 13:55:38 2020,1588254938,test@localhost,0,0
+CLIENT_LIST,test1@localhost,1.2.3.5:51053,10.68.0.25,,3871,3924,Thu Apr 30 13:55:40 2020,1588254940,test1@localhost,1,1
+HEADER,ROUTING_TABLE,Virtual Address,Common Name,Real Address,Last Ref,Last Ref (time_t)
+ROUTING_TABLE,10.80.0.65,test@localhost,1.2.3.4:54190,Thu Apr 30 13:55:40 2020,1588254940
+ROUTING_TABLE,10.68.0.25,test1@localhost,1.2.3.5:51053,Thu Apr 30 13:55:42 2020,1588254942
+GLOBAL_STATS,Max bcast/mcast queue length,0
+END
+`
+
 func TestConnectedClientsParsedCorrectly(t *testing.T) {
-	status, e := parse(bufio.NewReader(strings.NewReader(connectedClients)))
+	status, e := parse(bufio.NewReader(strings.NewReader(connectedClientsV1)))
 	if e != nil {
 		t.Errorf("should have worked")
 	}
@@ -118,17 +130,7 @@ func TestParsingWrongValuesIsNotAnIssue(t *testing.T) {
 	}
 }
 
-const connectedClientsV2 = `TITLE,OpenVPN 2.4.4 x86_64-pc-linux-gnu [SSL (OpenSSL)] [LZO] [LZ4] [EPOLL] [PKCS11] [MH/PKTINFO] [AEAD] built on May 14 2019
-TIME,Thu Apr 30 13:55:44 2020,1588254944
-HEADER,CLIENT_LIST,Common Name,Real Address,Virtual Address,Virtual IPv6 Address,Bytes Received,Bytes Sent,Connected Since,Connected Since (time_t),Username,Client ID,Peer ID
-CLIENT_LIST,test@localhost,1.2.3.4:54190,10.80.0.65,,3860,3688,Thu Apr 30 13:55:38 2020,1588254938,test@localhost,0,0
-CLIENT_LIST,test1@localhost,1.2.3.5:51053,10.68.0.25,,3871,3924,Thu Apr 30 13:55:40 2020,1588254940,test1@localhost,1,1
-HEADER,ROUTING_TABLE,Virtual Address,Common Name,Real Address,Last Ref,Last Ref (time_t)
-ROUTING_TABLE,10.80.0.65,test@localhost,1.2.3.4:54190,Thu Apr 30 13:55:40 2020,1588254940
-ROUTING_TABLE,10.68.0.25,test1@localhost,1.2.3.5:51053,Thu Apr 30 13:55:42 2020,1588254942
-GLOBAL_STATS,Max bcast/mcast queue length,0
-END
-`
+
 
 func TestConnectedClientsParsedCorrectlyWithStatusVersion2(t *testing.T) {
 	status, e := parse(bufio.NewReader(strings.NewReader(connectedClientsV2)))
@@ -154,28 +156,31 @@ func TestConnectedClientsParsedCorrectlyWithStatusVersion2(t *testing.T) {
 	}
 }
 
-func TestServerInfoIsParsedCorrectlyWithStatusVersion2(t *testing.T) {
-	status, _ := parse(bufio.NewReader(strings.NewReader(connectedClientsV2)))
-	if status.ServerInfo.Version != "2.4.4" {
-		t.Errorf("version is not parsed correctly")
-	}
-	if status.ServerInfo.Arch != "x86_64-pc-linux-gnu" {
-		t.Errorf("arch is not parsed correctly")
-	}
-	if status.ServerInfo.AdditionalInfo != "[SSL (OpenSSL)] [LZO] [LZ4] [EPOLL] [PKCS11] [MH/PKTINFO] [AEAD] built on May 14 2019" {
-		t.Errorf("additional info is not parsed correctly")
-	}
+var serverInfoTestCases = []struct {
+	StatusVersionName string
+	StatusFileContents string
+	ServerInfoVersion string
+	ServerInfoArch string
+	ServerInfoAdditionalInfo string
+} {
+	{"v1", connectedClientsV1, "unknown", "unknown", "unknown"},
+	{"v2",connectedClientsV2, "2.4.4", "x86_64-pc-linux-gnu", "[SSL (OpenSSL)] [LZO] [LZ4] [EPOLL] [PKCS11] [MH/PKTINFO] [AEAD] built on May 14 2019"},
 }
 
-func TestServerInfoIsParsedCorrectlyWithStatusVersion1(t *testing.T) {
-	status, _ := parse(bufio.NewReader(strings.NewReader(connectedClients)))
-	if status.ServerInfo.Version != "unknown" {
-		t.Errorf("version is not parsed correctly")
+func TestServerInfoIsParsedCorrectly(t *testing.T) {
+	for _, tt := range serverInfoTestCases {
+		t.Run(tt.StatusVersionName, func(t *testing.T) {
+			status, _ := parse(bufio.NewReader(strings.NewReader(tt.StatusFileContents)))
+			if status.ServerInfo.Version != tt.ServerInfoVersion {
+				t.Errorf("version is not parsed correctly")
+			}
+			if status.ServerInfo.Arch != tt.ServerInfoArch {
+				t.Errorf("arch is not parsed correctly")
+			}
+			if status.ServerInfo.AdditionalInfo != tt.ServerInfoAdditionalInfo {
+				t.Errorf("additional info is not parsed correctly")
+			}
+		})
 	}
-	if status.ServerInfo.Arch != "unknown" {
-		t.Errorf("arch is not parsed correctly")
-	}
-	if status.ServerInfo.AdditionalInfo != "unknown" {
-		t.Errorf("additional info is not parsed correctly")
-	}
+
 }
