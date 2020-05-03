@@ -21,7 +21,7 @@ func TestParsingEmptyFile(t *testing.T) {
 	}
 }
 
-const noConnectedClients = `OpenVPN CLIENT LIST
+const noConnectedClientsV1 = `OpenVPN CLIENT LIST
 Updated,Thu Apr 23 20:14:31 2020
 Common Name,Real Address,Bytes Received,Bytes Sent,Connected Since
 ROUTING TABLE
@@ -30,19 +30,44 @@ GLOBAL STATS
 Max bcast/mcast queue length,0
 END
 `
+const noConnectedClientsV2 = `TITLE,OpenVPN 2.4.4 x86_64-pc-linux-gnu [SSL (OpenSSL)] [LZO] [LZ4] [EPOLL] [PKCS11] [MH/PKTINFO] [AEAD] built on May 14 2019
+TIME,Thu Apr 30 13:55:44 2020,1588254944
+HEADER,CLIENT_LIST,Common Name,Real Address,Virtual Address,Virtual IPv6 Address,Bytes Received,Bytes Sent,Connected Since,Connected Since (time_t),Username,Client ID,Peer ID
+HEADER,ROUTING_TABLE,Virtual Address,Common Name,Real Address,Last Ref,Last Ref (time_t)
+GLOBAL_STATS,Max bcast/mcast queue length,0
+END
+`
+const noConnectedClientsV3 = `TITLE	OpenVPN 2.4.4 x86_64-pc-linux-gnu [SSL (OpenSSL)] [LZO] [LZ4] [EPOLL] [PKCS11] [MH/PKTINFO] [AEAD] built on May 14 2019
+TIME	Thu Apr 30 13:55:44 2020	1588254944
+HEADER	CLIENT_LIST	Common Name	Real Address	Virtual Address	Virtual IPv6 Address	Bytes Received	Bytes Sent	Connected Since	Connected Since (time_t)	Username	Client ID	Peer ID
+HEADER	ROUTING_TABLE	Virtual Address	Common Name	Real Address	Last Ref	Last Ref (time_t)
+GLOBAL_STATS	Max bcast/mcast queue length	0
+END
+`
+
+var noConnectedClientsTestCases = []struct {
+	StatusVersionName  string
+	StatusFileContents string
+}{
+	{"v1", noConnectedClientsV1},
+	{"v2", noConnectedClientsV2},
+	{"v3", noConnectedClientsV3},
+}
 
 func TestNoConnectedClientsAreParsedCorrectly(t *testing.T) {
-	status, e := parse(bufio.NewReader(strings.NewReader(noConnectedClients)))
-	if e != nil {
-		t.Errorf("should have worked")
-	}
-	loc, _ := time.LoadLocation("Local")
-	expectedTime, _ := time.ParseInLocation(timefmt, "Thu Apr 23 20:14:31 2020", loc)
-	if !expectedTime.Equal(status.UpdatedAt) {
-		t.Errorf("time was not parsed correctly")
-	}
-	if status.GlobalStats.MaxBcastMcastQueueLen != 0 {
-		t.Errorf("MaxBcastMcastQueueLen was not parsed correctly")
+	for _, tt := range noConnectedClientsTestCases {
+		t.Run(tt.StatusVersionName, func(t *testing.T) {
+			status, e := parse(bufio.NewReader(strings.NewReader(tt.StatusFileContents)))
+			if e != nil {
+				t.Errorf("should have worked")
+			}
+			if len(status.ClientList) != 0 {
+				t.Errorf("Clients are not parsed correctly")
+			}
+			if status.GlobalStats.MaxBcastMcastQueueLen != 0 {
+				t.Errorf("MaxBcastMcastQueueLen was not parsed correctly")
+			}
+		})
 	}
 }
 
@@ -118,7 +143,7 @@ func TestConnectedClientsParsedCorrectly(t *testing.T) {
 			if !tt.UpdatedAt.Equal(status.UpdatedAt) {
 				t.Errorf("failed parsing updated at")
 			}
-			if tt.MaxBcastMcastQueueLength != status.GlobalStats.MaxBcastMcastQueueLen  {
+			if tt.MaxBcastMcastQueueLength != status.GlobalStats.MaxBcastMcastQueueLen {
 				t.Errorf("failed parsing bcast/mcast queue length")
 			}
 			if len(status.ClientList) != tt.NumberOfConnectedClients {
