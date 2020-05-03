@@ -15,6 +15,21 @@ For pre built binaries, please take a look at the [github releases](https://gith
 
 ## Usage
 
+```shell script
+$ ./bin/openvpn_exporter -h
+
+GLOBAL OPTIONS:
+   --web.address value, --web.listen-address value  Address to bind the metrics server (default: "0.0.0.0:9176") [$OPENVPN_EXPORTER_WEB_ADDRESS]
+   --web.path value, --web.telemetry-path value     Path to bind the metrics server (default: "/metrics") [$OPENVPN_EXPORTER_WEB_PATH]
+   --web.root value                                 Root path to exporter endpoints (default: "/") [$OPENVPN_EXPORTER_WEB_ROOT]
+   --status-file value                              The OpenVPN status file(s) to export (example test:./example/version1.status ) [$OPENVPN_EXPORTER_STATUS_FILE]
+   --disable-client-metrics                         Disables per client (bytes_received, bytes_sent, connected_since) metrics (default: false) [$OPENVPN_EXPORTER_DISABLE_CLIENT_METRICS]
+   --enable-golang-metrics                          Enables golang and process metrics for the exporter)  (default: false) [$OPENVPN_EXPORTER_ENABLE_GOLANG_METRICS]
+   --log.level value                                Only log messages with given severity (default: "info") [$OPENVPN_EXPORTER_LOG_LEVEL]
+   --help, -h                                       Show help (default: false)
+   --version, -v                                    Prints the current version (default: false)
+```
+
 ### Example metrics
 
 ```
