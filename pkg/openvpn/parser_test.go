@@ -98,13 +98,14 @@ var correctlyParsedTestCases = []struct {
 	StatusFileContents       string
 	UpdatedAt                time.Time
 	NumberOfConnectedClients int
+	MaxBcastMcastQueueLength int
 	Client0CommonNamme       string
 	Client0Address           string
 	Client0ConnectedSince    time.Time
 }{
-	{"v1", connectedClientsV1, parseDate("Thu Apr 23 20:14:31 2020"), 4, "user1", "1.2.3.4", parseDate("Wed Apr 22 12:36:42 2020")},
-	{"v2", connectedClientsV2, time.Unix(1588254944, 0), 2, "test@localhost", "1.2.3.4", time.Unix(1588254938, 0)},
-	{"v3", connectedClientsV3, time.Unix(1588254944, 0), 2, "test@localhost", "1.2.3.4", time.Unix(1588254938, 0)},
+	{"v1", connectedClientsV1, parseDate("Thu Apr 23 20:14:31 2020"), 4, 5, "user1", "1.2.3.4", parseDate("Wed Apr 22 12:36:42 2020")},
+	{"v2", connectedClientsV2, time.Unix(1588254944, 0), 2, 0, "test@localhost", "1.2.3.4", time.Unix(1588254938, 0)},
+	{"v3", connectedClientsV3, time.Unix(1588254944, 0), 2, 0, "test@localhost", "1.2.3.4", time.Unix(1588254938, 0)},
 }
 
 func TestConnectedClientsParsedCorrectly(t *testing.T) {
@@ -116,6 +117,9 @@ func TestConnectedClientsParsedCorrectly(t *testing.T) {
 			}
 			if !tt.UpdatedAt.Equal(status.UpdatedAt) {
 				t.Errorf("failed parsing updated at")
+			}
+			if tt.MaxBcastMcastQueueLength != status.GlobalStats.MaxBcastMcastQueueLen  {
+				t.Errorf("failed parsing bcast/mcast queue length")
 			}
 			if len(status.ClientList) != tt.NumberOfConnectedClients {
 				t.Errorf("Clients are not parsed correctly")
