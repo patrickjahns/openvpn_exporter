@@ -56,6 +56,9 @@ openvpn_bytes_sent{common_name="user1",server="v1"} 7.76234e+06
 openvpn_bytes_sent{common_name="user2",server="v1"} 2.065632e+06
 openvpn_bytes_sent{common_name="user3@test.de",server="v1"} 2.3599532e+07
 openvpn_bytes_sent{common_name="user4",server="v1"} 575193
+# HELP openvpn_collection_error Error occured during collection
+# TYPE openvpn_collection_error counter
+openvpn_collection_error{server="wrong"} 5
 # HELP openvpn_connected_since Unixtimestamp when the connection was established
 # TYPE openvpn_connected_since gauge
 openvpn_connected_since{common_name="test1@localhost",server="v2"} 1.58825494e+09
