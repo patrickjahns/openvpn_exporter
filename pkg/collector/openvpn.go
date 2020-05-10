@@ -19,12 +19,14 @@ type OpenVPNCollector struct {
 	ConnectedSince        *prometheus.Desc
 	MaxBcastMcastQueueLen *prometheus.Desc
 	ServerInfo            *prometheus.Desc
+	CollectionError       *prometheus.CounterVec
 }
 
 // OpenVPNServer contains information of which servers will be scraped
 type OpenVPNServer struct {
 	Name       string
 	StatusFile string
+	ParseError float64
 }
 
 // NewOpenVPNCollector returns a new OpenVPNCollector
@@ -76,6 +78,13 @@ func NewOpenVPNCollector(logger log.Logger, openVPNServer []OpenVPNServer, colle
 			[]string{"server", "version", "arch"},
 			nil,
 		),
+		CollectionError: prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Name: prometheus.BuildFQName(namespace, "", "collection_error"),
+				Help: "Error occured during collection",
+			},
+			[]string{"server"},
+		),
 	}
 }
 
@@ -90,6 +99,7 @@ func (c *OpenVPNCollector) Describe(ch chan<- *prometheus.Desc) {
 		ch <- c.BytesReceived
 		ch <- c.ConnectedSince
 	}
+	c.CollectionError.Describe(ch)
 }
 
 // Collect is called by the Prometheus registry when collecting metrics.
@@ -110,6 +120,8 @@ func (c *OpenVPNCollector) collect(ovpn OpenVPNServer, ch chan<- prometheus.Metr
 			"msg", "error parsing statusfile",
 			"err", err,
 		)
+		c.CollectionError.WithLabelValues(ovpn.Name).Add(1)
+		c.CollectionError.Collect(ch)
 		return
 	}
 

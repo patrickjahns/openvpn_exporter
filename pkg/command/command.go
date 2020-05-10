@@ -138,7 +138,7 @@ func run(c *cli.Context, cfg *config.Config) error {
 			"serverName", serverName,
 			"statusFile", statusFile,
 		)
-		openVPServers = append(openVPServers, collector.OpenVPNServer{Name: serverName, StatusFile: statusFile})
+		openVPServers = append(openVPServers, collector.OpenVPNServer{Name: serverName, StatusFile: statusFile, ParseError: 0})
 	}
 	r.MustRegister(collector.NewOpenVPNCollector(
 		logger,
