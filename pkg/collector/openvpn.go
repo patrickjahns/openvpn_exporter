@@ -135,6 +135,9 @@ func (c *OpenVPNCollector) collect(ovpn OpenVPNServer, ch chan<- prometheus.Metr
 			"bytesSent", client.BytesSent,
 		)
 		if c.collectClientMetrics {
+			if client.CommonName == "UNDEF" {
+				continue
+			}
 			ch <- prometheus.MustNewConstMetric(
 				c.BytesReceived,
 				prometheus.GaugeValue,

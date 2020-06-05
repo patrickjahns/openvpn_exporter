@@ -1,0 +1,10 @@
+OpenVPN CLIENT LIST
+Updated,Fri Jun  5 09:03:05 2020
+Common Name,Real Address,Bytes Received,Bytes Sent,Connected Since
+foo_foo,::ffff:1.1.1.1,898582,674355,Thu Jun  4 08:50:24 2020
+bar_bar,::ffff:2.2.2.2,1550890,1156181,Wed Jun  3 14:00:04 2020
+UNDEF,::ffff:3.3.3.3,527,10441,Fri Jun  5 09:02:17 2020
+UNDEF,::ffff:4.4.4.4,527,8830,Fri Jun  5 09:02:39 2020
+GLOBAL STATS
+Max bcast/mcast queue length,0
+END
