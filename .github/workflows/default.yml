@@ -15,8 +15,11 @@ jobs:
         run: |
           make fmt
           make vet
-          make lint
           make test
           make build
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v1
+        with:
+          version: v1.27
       - name: Build release type artifacts
         run: make release
