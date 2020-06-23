@@ -101,13 +101,13 @@ func Run() error {
 	}
 
 	app.Action = func(c *cli.Context) error {
-		return run(c, cfg)
+		return run(cfg)
 	}
 
 	return app.Run(os.Args)
 }
 
-func run(c *cli.Context, cfg *config.Config) error {
+func run(cfg *config.Config) error {
 	// setup logging
 	logger := setupLogging(cfg)
 	level.Info(logger).Log(
