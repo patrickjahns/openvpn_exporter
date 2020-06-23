@@ -3,8 +3,9 @@ package collector
 import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
-	"github.com/patrickjahns/openvpn_exporter/pkg/openvpn"
 	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/patrickjahns/openvpn_exporter/pkg/openvpn"
 )
 
 // OpenVPNCollector collects metrics from openvpn status files
@@ -81,7 +82,7 @@ func NewOpenVPNCollector(logger log.Logger, openVPNServer []OpenVPNServer, colle
 		CollectionError: prometheus.NewCounterVec(
 			prometheus.CounterOpts{
 				Name: prometheus.BuildFQName(namespace, "", "collection_error"),
-				Help: "Error occured during collection",
+				Help: "Error occurred during collection",
 			},
 			[]string{"server"},
 		),

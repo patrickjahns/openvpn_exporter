@@ -3,6 +3,7 @@ package openvpn
 import (
 	"bufio"
 	"bytes"
+	"io"
 	"net"
 	"os"
 	"strconv"
@@ -54,10 +55,10 @@ const (
 // ParseFile parses a openvpn status log and returns respective stats
 func ParseFile(statusfile string) (*Status, error) {
 	conn, err := os.Open(statusfile)
-	defer conn.Close()
 	if err != nil {
 		return nil, err
 	}
+	defer conn.Close()
 	status, err := parse(bufio.NewReader(conn))
 	if err != nil {
 		return nil, err
@@ -89,7 +90,7 @@ func parse(reader *bufio.Reader) (*Status, error) {
 	return nil, &parseError{"bad status file"}
 }
 
-func parseStatusV1(reader *bufio.Reader) (*Status, error) {
+func parseStatusV1(reader io.Reader) (*Status, error) {
 	scanner := bufio.NewScanner(reader)
 	var lastUpdatedAt time.Time
 	var maxBcastMcastQueueLen int
@@ -126,14 +127,14 @@ func parseStatusV1(reader *bufio.Reader) (*Status, error) {
 	}, nil
 }
 
-func parseStatusV2AndV3(reader *bufio.Reader, seperator string) (*Status, error) {
+func parseStatusV2AndV3(reader io.Reader, separator string) (*Status, error) {
 	scanner := bufio.NewScanner(reader)
 	var maxBcastMcastQueueLen int
 	var lastUpdatedAt time.Time
 	var clients []Client
 	var serverInfo ServerInfo
 	for scanner.Scan() {
-		fields := strings.Split(scanner.Text(), seperator)
+		fields := strings.Split(scanner.Text(), separator)
 		if fields[0] == "TIME" && len(fields) == 3 {
 			updatedAtInt, _ := strconv.ParseInt(fields[2], 10, 64)
 			lastUpdatedAt = time.Unix(updatedAtInt, 0)

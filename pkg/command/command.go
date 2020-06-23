@@ -1,9 +1,6 @@
 package command
 
 import (
-	"github.com/patrickjahns/openvpn_exporter/pkg/collector"
-	"github.com/patrickjahns/openvpn_exporter/pkg/config"
-	"github.com/patrickjahns/openvpn_exporter/pkg/version"
 	"net/http"
 	"os"
 	"strings"
@@ -13,6 +10,10 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/urfave/cli/v2"
+
+	"github.com/patrickjahns/openvpn_exporter/pkg/collector"
+	"github.com/patrickjahns/openvpn_exporter/pkg/config"
+	"github.com/patrickjahns/openvpn_exporter/pkg/version"
 )
 
 // Run parses the command line arguments and executes the program.
@@ -100,13 +101,13 @@ func Run() error {
 	}
 
 	app.Action = func(c *cli.Context) error {
-		return run(c, cfg)
+		return run(cfg)
 	}
 
 	return app.Run(os.Args)
 }
 
-func run(c *cli.Context, cfg *config.Config) error {
+func run(cfg *config.Config) error {
 	// setup logging
 	logger := setupLogging(cfg)
 	level.Info(logger).Log(

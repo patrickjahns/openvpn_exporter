@@ -59,10 +59,10 @@ generate:
 
 .PHONY: lint
 lint:
-	@which golint > /dev/null; if [ $$? -ne 0 ]; then \
-		GO111MODULE=off $(GO) get -u golang.org/x/lint/golint; \
+	@which golangci-lint > /dev/null; if [ $$? -ne 0 ]; then \
+		(echo "please install golangci-lint"; exit 1) \
 	fi
-	for PKG in $(PACKAGES); do golint -set_exit_status $$PKG || exit 1; done;
+	golangci-lint run -v
 
 .PHONY: test
 test:
