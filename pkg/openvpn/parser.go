@@ -126,14 +126,14 @@ func parseStatusV1(reader *bufio.Reader) (*Status, error) {
 	}, nil
 }
 
-func parseStatusV2AndV3(reader *bufio.Reader, seperator string) (*Status, error) {
+func parseStatusV2AndV3(reader *bufio.Reader, separator string) (*Status, error) {
 	scanner := bufio.NewScanner(reader)
 	var maxBcastMcastQueueLen int
 	var lastUpdatedAt time.Time
 	var clients []Client
 	var serverInfo ServerInfo
 	for scanner.Scan() {
-		fields := strings.Split(scanner.Text(), seperator)
+		fields := strings.Split(scanner.Text(), separator)
 		if fields[0] == "TIME" && len(fields) == 3 {
 			updatedAtInt, _ := strconv.ParseInt(fields[2], 10, 64)
 			lastUpdatedAt = time.Unix(updatedAtInt, 0)

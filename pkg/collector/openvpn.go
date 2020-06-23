@@ -82,7 +82,7 @@ func NewOpenVPNCollector(logger log.Logger, openVPNServer []OpenVPNServer, colle
 		CollectionError: prometheus.NewCounterVec(
 			prometheus.CounterOpts{
 				Name: prometheus.BuildFQName(namespace, "", "collection_error"),
-				Help: "Error occured during collection",
+				Help: "Error occurred during collection",
 			},
 			[]string{"server"},
 		),
