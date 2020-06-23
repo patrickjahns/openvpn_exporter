@@ -54,10 +54,10 @@ const (
 // ParseFile parses a openvpn status log and returns respective stats
 func ParseFile(statusfile string) (*Status, error) {
 	conn, err := os.Open(statusfile)
-	defer conn.Close()
 	if err != nil {
 		return nil, err
 	}
+	defer conn.Close()
 	status, err := parse(bufio.NewReader(conn))
 	if err != nil {
 		return nil, err
