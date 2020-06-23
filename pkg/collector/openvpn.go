@@ -3,8 +3,9 @@ package collector
 import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
-	"github.com/patrickjahns/openvpn_exporter/pkg/openvpn"
 	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/patrickjahns/openvpn_exporter/pkg/openvpn"
 )
 
 // OpenVPNCollector collects metrics from openvpn status files
