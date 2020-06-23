@@ -3,6 +3,7 @@ package openvpn
 import (
 	"bufio"
 	"bytes"
+	"io"
 	"net"
 	"os"
 	"strconv"
@@ -89,7 +90,7 @@ func parse(reader *bufio.Reader) (*Status, error) {
 	return nil, &parseError{"bad status file"}
 }
 
-func parseStatusV1(reader *bufio.Reader) (*Status, error) {
+func parseStatusV1(reader io.Reader) (*Status, error) {
 	scanner := bufio.NewScanner(reader)
 	var lastUpdatedAt time.Time
 	var maxBcastMcastQueueLen int
@@ -126,7 +127,7 @@ func parseStatusV1(reader *bufio.Reader) (*Status, error) {
 	}, nil
 }
 
-func parseStatusV2AndV3(reader *bufio.Reader, separator string) (*Status, error) {
+func parseStatusV2AndV3(reader io.Reader, separator string) (*Status, error) {
 	scanner := bufio.NewScanner(reader)
 	var maxBcastMcastQueueLen int
 	var lastUpdatedAt time.Time
