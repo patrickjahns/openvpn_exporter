@@ -127,6 +127,7 @@ func (c *OpenVPNCollector) collect(ovpn OpenVPNServer, ch chan<- prometheus.Metr
 	}
 
 	connectedClients := 0
+	var clientCommonNames []string
 	for _, client := range status.ClientList {
 		connectedClients++
 		level.Debug(c.logger).Log(
@@ -139,6 +140,14 @@ func (c *OpenVPNCollector) collect(ovpn OpenVPNServer, ch chan<- prometheus.Metr
 			if client.CommonName == "UNDEF" {
 				continue
 			}
+			if contains(clientCommonNames, client.CommonName) {
+				level.Warn(c.logger).Log(
+					"msg", "duplicate client common name in statusfile - duplicate metric dropped",
+					"commonName", client.CommonName,
+				)
+				continue
+			}
+			clientCommonNames = append(clientCommonNames, client.CommonName)
 			ch <- prometheus.MustNewConstMetric(
 				c.BytesReceived,
 				prometheus.GaugeValue,
@@ -190,4 +199,13 @@ func (c *OpenVPNCollector) collect(ovpn OpenVPNServer, ch chan<- prometheus.Metr
 		status.ServerInfo.Version,
 		status.ServerInfo.Arch,
 	)
+}
+
+func contains(list []string, item string) bool {
+	for _, e := range list {
+		if e == item {
+			return true
+		}
+	}
+	return false
 }
