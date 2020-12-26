@@ -89,7 +89,7 @@ release-build:
 	@which gox > /dev/null; if [ $$? -ne 0 ]; then \
 		GO111MODULE=off  $(GO) get -u github.com/mitchellh/gox; \
 	fi
-	gox -arch="386 amd64 arm" -verbose -ldflags '-w $(LDFLAGS)' -output="$(DIST)/$(EXECUTABLE)-{{.OS}}-{{.Arch}}" ./cmd/$(NAME)
+	gox -arch="386 amd64 arm" -osarch '!darwin/386' -verbose -ldflags '-w $(LDFLAGS)' -output="$(DIST)/$(EXECUTABLE)-{{.OS}}-{{.Arch}}" ./cmd/$(NAME)
 
 .PHONY: release-checksums
 release-checksums:
