@@ -14,7 +14,7 @@ jobs:
         with:
           go-version: '^1.14.1'
       - name: Set VERSION env
-        run: echo ::set-env name=VERSION::$(echo ${GITHUB_REF} | rev | cut -d'/' -f 1 | rev )
+        run: echo VERSION=$(echo ${GITHUB_REF} | rev | cut -d'/' -f 1 | rev ) >> $GITHUB_ENV
       - name: Build artifacts
         run: make release VERSION=${{ env.VERSION }}
       - name: Upload artifactes to release
