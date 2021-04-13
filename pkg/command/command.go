@@ -80,7 +80,7 @@ func Run() error {
 		},
 		&cli.BoolFlag{
 			Name:        "allow-duplicate-cn",
-			Usage:       "Allow multiple connections with the same common name distinguished by the Client ID (only works with version 2 and 3 status types)",
+			Usage:       "Allow multiple connections with the same common name distinguished by the Peer ID (only works with version 2 and 3 status types)",
 			EnvVars:     []string{"OPENVPN_EXPORTER_ALLOW_DUPLICATE_CN"},
 			Destination: &cfg.AllowDuplicateCN,
 		},

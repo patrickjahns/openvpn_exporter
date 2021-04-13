@@ -61,19 +61,19 @@ func NewOpenVPNCollector(logger log.Logger, openVPNServer []OpenVPNServer, colle
 		BytesReceived: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "bytes_received"),
 			"Amount of data received via the connection",
-			[]string{"server", "common_name", "cid"},
+			[]string{"server", "common_name", "unique_id"},
 			nil,
 		),
 		BytesSent: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "bytes_sent"),
 			"Amount of data sent via the connection",
-			[]string{"server", "common_name", "cid"},
+			[]string{"server", "common_name", "unique_id"},
 			nil,
 		),
 		ConnectedSince: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "connected_since"),
 			"Unixtimestamp when the connection was established",
-			[]string{"server", "common_name", "cid"},
+			[]string{"server", "common_name", "unique_id"},
 			nil,
 		),
 		ServerInfo: prometheus.NewDesc(
@@ -151,7 +151,7 @@ func (c *OpenVPNCollector) collect(ovpn OpenVPNServer, ch chan<- prometheus.Metr
 					)
 					continue
 				}
-				if c.allowDuplicateCn && client.ClientID == -1 {
+				if c.allowDuplicateCn && client.PeerID == -1 {
 					level.Warn(c.logger).Log(
 						"msg", "allow-duplicate-cn flag with a version 1 statusfile - duplicate metric dropped (use version 2 or 3)",
 						"commonName", client.CommonName,
@@ -164,19 +164,19 @@ func (c *OpenVPNCollector) collect(ovpn OpenVPNServer, ch chan<- prometheus.Metr
 				c.BytesReceived,
 				prometheus.CounterValue,
 				client.BytesReceived,
-				ovpn.Name, client.CommonName, strconv.FormatInt(client.ClientID, 10),
+				ovpn.Name, client.CommonName, strconv.FormatInt(client.PeerID, 10),
 			)
 			ch <- prometheus.MustNewConstMetric(
 				c.BytesSent,
 				prometheus.CounterValue,
 				client.BytesSent,
-				ovpn.Name, client.CommonName, strconv.FormatInt(client.ClientID, 10),
+				ovpn.Name, client.CommonName, strconv.FormatInt(client.PeerID, 10),
 			)
 			ch <- prometheus.MustNewConstMetric(
 				c.ConnectedSince,
 				prometheus.GaugeValue,
 				float64(client.ConnectedSince.Unix()),
-				ovpn.Name, client.CommonName, strconv.FormatInt(client.ClientID, 10),
+				ovpn.Name, client.CommonName, strconv.FormatInt(client.PeerID, 10),
 			)
 		}
 	}
