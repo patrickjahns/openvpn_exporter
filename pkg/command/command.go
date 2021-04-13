@@ -79,6 +79,12 @@ func Run() error {
 			EnvVars: []string{"OPENVPN_EXPORTER_DISABLE_CLIENT_METRICS"},
 		},
 		&cli.BoolFlag{
+			Name:        "allow-duplicate-cn",
+			Usage:       "Allow multiple connections with the same common name distinguished by the Client ID (only works with version 2 and 3 status types)",
+			EnvVars:     []string{"OPENVPN_EXPORTER_ALLOW_DUPLICATE_CN"},
+			Destination: &cfg.AllowDuplicateCN,
+		},
+		&cli.BoolFlag{
 			Name:        "enable-golang-metrics",
 			Value:       false,
 			Usage:       "Enables golang and process metrics for the exporter) ",
@@ -145,6 +151,7 @@ func run(cfg *config.Config) error {
 		logger,
 		openVPServers,
 		cfg.StatusCollector.ExportClientMetrics,
+		cfg.AllowDuplicateCN,
 	))
 
 	http.Handle(cfg.Server.Path,

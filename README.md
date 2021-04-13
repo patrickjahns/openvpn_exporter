@@ -24,6 +24,7 @@ GLOBAL OPTIONS:
    --web.root value                                 Root path to exporter endpoints (default: "/") [$OPENVPN_EXPORTER_WEB_ROOT]
    --status-file value                              The OpenVPN status file(s) to export (example test:./example/version1.status ) [$OPENVPN_EXPORTER_STATUS_FILE]
    --disable-client-metrics                         Disables per client (bytes_received, bytes_sent, connected_since) metrics (default: false) [$OPENVPN_EXPORTER_DISABLE_CLIENT_METRICS]
+   --allow-duplicate-cn                             Allow multiple connections with the same common name distinguished by the Client ID (only works with version 2 and 3 status types) (default: false) [$OPENVPN_EXPORTER_ALLOW_DUPLICATE_CN]
    --enable-golang-metrics                          Enables golang and process metrics for the exporter)  (default: false) [$OPENVPN_EXPORTER_ENABLE_GOLANG_METRICS]
    --log.level value                                Only log messages with given severity (default: "info") [$OPENVPN_EXPORTER_LOG_LEVEL]
    --help, -h                                       Show help (default: false)
