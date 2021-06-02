@@ -23,7 +23,8 @@ type Client struct {
 	BytesReceived  float64
 	BytesSent      float64
 	ConnectedSince time.Time
-	PeerID       int64
+	ClientID       int64
+	PeerID         int64
 }
 
 // ServerInfo reflects information that was collected about the server
@@ -144,6 +145,7 @@ func parseStatusV2AndV3(reader io.Reader, separator string) (*Status, error) {
 			bytesRec, _ := strconv.ParseFloat(fields[5], 64)
 			bytesSent, _ := strconv.ParseFloat(fields[6], 64)
 			connectedSinceInt, _ := strconv.ParseInt(fields[8], 10, 64)
+			clientIdInt, _ := strconv.ParseInt(fields[10], 10, 64)
 			peerIdInt, _ := strconv.ParseInt(fields[11], 10, 64)
 			client := Client{
 				CommonName:     fields[1],
@@ -151,6 +153,7 @@ func parseStatusV2AndV3(reader io.Reader, separator string) (*Status, error) {
 				BytesReceived:  bytesRec,
 				BytesSent:      bytesSent,
 				ConnectedSince: time.Unix(connectedSinceInt, 0),
+				ClientID:       clientIdInt,
 				PeerID:         peerIdInt,
 			}
 			clients = append(clients, client)

@@ -130,6 +130,7 @@ func (c *OpenVPNCollector) collect(ovpn OpenVPNServer, ch chan<- prometheus.Metr
 	}
 
 	connectedClients := 0
+	hasFacedZeroPeerId := false
 	var clientCommonNames []string
 	for _, client := range status.ClientList {
 		connectedClients++
@@ -160,23 +161,30 @@ func (c *OpenVPNCollector) collect(ovpn OpenVPNServer, ch chan<- prometheus.Metr
 				}
 			}
 			clientCommonNames = append(clientCommonNames, client.CommonName)
+			uniqueId := client.PeerID
+			if uniqueId == 0 { // In TCP mode, PeerID is always 0
+				if hasFacedZeroPeerId { // Use ClientID only if a 0 PeerID is matched twice (maybe it's the first item and we are in UDP mode)
+					uniqueId = -client.ClientID - 1 // ClientID starts at 0; But it may be duplicated with another 0 PeerID
+				}
+				hasFacedZeroPeerId = true
+			}
 			ch <- prometheus.MustNewConstMetric(
 				c.BytesReceived,
 				prometheus.CounterValue,
 				client.BytesReceived,
-				ovpn.Name, client.CommonName, strconv.FormatInt(client.PeerID, 10),
+				ovpn.Name, client.CommonName, strconv.FormatInt(uniqueId, 10),
 			)
 			ch <- prometheus.MustNewConstMetric(
 				c.BytesSent,
 				prometheus.CounterValue,
 				client.BytesSent,
-				ovpn.Name, client.CommonName, strconv.FormatInt(client.PeerID, 10),
+				ovpn.Name, client.CommonName, strconv.FormatInt(uniqueId, 10),
 			)
 			ch <- prometheus.MustNewConstMetric(
 				c.ConnectedSince,
 				prometheus.GaugeValue,
 				float64(client.ConnectedSince.Unix()),
-				ovpn.Name, client.CommonName, strconv.FormatInt(client.PeerID, 10),
+				ovpn.Name, client.CommonName, strconv.FormatInt(uniqueId, 10),
 			)
 		}
 	}
