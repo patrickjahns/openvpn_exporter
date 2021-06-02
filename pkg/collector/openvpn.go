@@ -4,6 +4,7 @@ import (
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
+	"strconv"
 
 	"github.com/patrickjahns/openvpn_exporter/pkg/openvpn"
 )
@@ -12,6 +13,7 @@ import (
 type OpenVPNCollector struct {
 	logger                log.Logger
 	collectClientMetrics  bool
+	allowDuplicateCn      bool
 	OpenVPNServer         []OpenVPNServer
 	LastUpdated           *prometheus.Desc
 	ConnectedClients      *prometheus.Desc
@@ -31,11 +33,12 @@ type OpenVPNServer struct {
 }
 
 // NewOpenVPNCollector returns a new OpenVPNCollector
-func NewOpenVPNCollector(logger log.Logger, openVPNServer []OpenVPNServer, collectClientMetrics bool) *OpenVPNCollector {
+func NewOpenVPNCollector(logger log.Logger, openVPNServer []OpenVPNServer, collectClientMetrics bool, allowDuplicateCn bool) *OpenVPNCollector {
 	return &OpenVPNCollector{
 		logger:               logger,
 		OpenVPNServer:        openVPNServer,
 		collectClientMetrics: collectClientMetrics,
+		allowDuplicateCn:     allowDuplicateCn,
 
 		LastUpdated: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "last_updated"),
@@ -58,19 +61,19 @@ func NewOpenVPNCollector(logger log.Logger, openVPNServer []OpenVPNServer, colle
 		BytesReceived: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "bytes_received"),
 			"Amount of data received via the connection",
-			[]string{"server", "common_name"},
+			[]string{"server", "common_name", "unique_id"},
 			nil,
 		),
 		BytesSent: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "bytes_sent"),
 			"Amount of data sent via the connection",
-			[]string{"server", "common_name"},
+			[]string{"server", "common_name", "unique_id"},
 			nil,
 		),
 		ConnectedSince: prometheus.NewDesc(
 			prometheus.BuildFQName(namespace, "", "connected_since"),
 			"Unixtimestamp when the connection was established",
-			[]string{"server", "common_name"},
+			[]string{"server", "common_name", "unique_id"},
 			nil,
 		),
 		ServerInfo: prometheus.NewDesc(
@@ -127,6 +130,7 @@ func (c *OpenVPNCollector) collect(ovpn OpenVPNServer, ch chan<- prometheus.Metr
 	}
 
 	connectedClients := 0
+	hasFacedZeroPeerId := false
 	var clientCommonNames []string
 	for _, client := range status.ClientList {
 		connectedClients++
@@ -141,30 +145,46 @@ func (c *OpenVPNCollector) collect(ovpn OpenVPNServer, ch chan<- prometheus.Metr
 				continue
 			}
 			if contains(clientCommonNames, client.CommonName) {
-				level.Warn(c.logger).Log(
-					"msg", "duplicate client common name in statusfile - duplicate metric dropped",
-					"commonName", client.CommonName,
-				)
-				continue
+				if !c.allowDuplicateCn {
+					level.Warn(c.logger).Log(
+						"msg", "duplicate client common name in statusfile - duplicate metric dropped (use --allow-duplicate-cn flag)",
+						"commonName", client.CommonName,
+					)
+					continue
+				}
+				if c.allowDuplicateCn && client.PeerID == -1 {
+					level.Warn(c.logger).Log(
+						"msg", "allow-duplicate-cn flag with a version 1 statusfile - duplicate metric dropped (use version 2 or 3)",
+						"commonName", client.CommonName,
+					)
+					continue
+				}
 			}
 			clientCommonNames = append(clientCommonNames, client.CommonName)
+			uniqueId := client.PeerID
+			if uniqueId == 0 { // In TCP mode, PeerID is always 0
+				if hasFacedZeroPeerId { // Use ClientID only if a 0 PeerID is matched twice (maybe it's the first item and we are in UDP mode)
+					uniqueId = -client.ClientID - 1 // ClientID starts at 0; But it may be duplicated with another 0 PeerID
+				}
+				hasFacedZeroPeerId = true
+			}
 			ch <- prometheus.MustNewConstMetric(
 				c.BytesReceived,
-				prometheus.GaugeValue,
+				prometheus.CounterValue,
 				client.BytesReceived,
-				ovpn.Name, client.CommonName,
+				ovpn.Name, client.CommonName, strconv.FormatInt(uniqueId, 10),
 			)
 			ch <- prometheus.MustNewConstMetric(
 				c.BytesSent,
-				prometheus.GaugeValue,
+				prometheus.CounterValue,
 				client.BytesSent,
-				ovpn.Name, client.CommonName,
+				ovpn.Name, client.CommonName, strconv.FormatInt(uniqueId, 10),
 			)
 			ch <- prometheus.MustNewConstMetric(
 				c.ConnectedSince,
 				prometheus.GaugeValue,
 				float64(client.ConnectedSince.Unix()),
-				ovpn.Name, client.CommonName,
+				ovpn.Name, client.CommonName, strconv.FormatInt(uniqueId, 10),
 			)
 		}
 	}
