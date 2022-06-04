@@ -5,6 +5,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/patrickjahns/openvpn_exporter/pkg/openvpn"
+
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
@@ -18,7 +20,21 @@ import (
 
 // Run parses the command line arguments and executes the program.
 func Run() error {
+	app, cfg := initApp()
 
+	app.Action = func(c *cli.Context) error {
+		server, logger := run(cfg)
+		if err := server.ListenAndServe(); err != nil {
+			level.Error(logger).Log("msg", "http listenandserve error", "err", err)
+			return err
+		}
+		return nil
+	}
+
+	return app.Run(os.Args)
+}
+
+func initApp() (*cli.App, *config.Config) {
 	app := &cli.App{
 		Name:    "openvpn_exporter",
 		Version: version.Info(),
@@ -79,6 +95,18 @@ func Run() error {
 			EnvVars: []string{"OPENVPN_EXPORTER_DISABLE_CLIENT_METRICS"},
 		},
 		&cli.BoolFlag{
+			Name: "pseudonymize-client-metrics",
+			Usage: "Pseudonymized per client (bytes_received, bytes_sent, connected_since) metrics by replacing " +
+				"usernames with a random string",
+			EnvVars: []string{"OPENVPN_EXPORTER_PSEUDONYMIZE_CLIENT_METRICS"},
+		},
+		&cli.IntFlag{
+			Name:    "pseudonymize-client-metrics-length",
+			Value:   8,
+			Usage:   "Length of the client pseudonym string",
+			EnvVars: []string{"OPENVPN_EXPORTER_PSEUDONYMIZE_CLIENT_METRICS_LENGTH"},
+		},
+		&cli.BoolFlag{
 			Name:        "enable-golang-metrics",
 			Value:       false,
 			Usage:       "Enables golang and process metrics for the exporter) ",
@@ -97,17 +125,14 @@ func Run() error {
 	app.Before = func(c *cli.Context) error {
 		cfg.StatusCollector.StatusFile = c.StringSlice("status-file")
 		cfg.StatusCollector.ExportClientMetrics = !c.Bool("disable-client-metrics")
+		cfg.StatusCollector.PseudonymizeClientMetrics = c.Bool("pseudonymize-client-metrics")
+		cfg.StatusCollector.PseudonymizeClientMetricsLength = c.Int("pseudonymize-client-metrics-length")
 		return nil
 	}
-
-	app.Action = func(c *cli.Context) error {
-		return run(cfg)
-	}
-
-	return app.Run(os.Args)
+	return app, cfg
 }
 
-func run(cfg *config.Config) error {
+func run(cfg *config.Config) (*http.Server, log.Logger) {
 	// setup logging
 	logger := setupLogging(cfg)
 	level.Info(logger).Log(
@@ -141,16 +166,28 @@ func run(cfg *config.Config) error {
 		)
 		openVPServers = append(openVPServers, collector.OpenVPNServer{Name: serverName, StatusFile: statusFile, ParseError: 0})
 	}
+
+	var parserDecorators []openvpn.ParserDecorator
+	if cfg.StatusCollector.PseudonymizeClientMetrics {
+		parserDecorators = append(
+			parserDecorators,
+			openvpn.NewOpenVPNPseudonymizingDecorator(
+				cfg.StatusCollector.PseudonymizeClientMetricsLength,
+			),
+		)
+	}
 	r.MustRegister(collector.NewOpenVPNCollector(
 		logger,
 		openVPServers,
+		parserDecorators,
 		cfg.StatusCollector.ExportClientMetrics,
 	))
 
-	http.Handle(cfg.Server.Path,
+	mux := http.NewServeMux()
+	mux.Handle(cfg.Server.Path,
 		promhttp.HandlerFor(r, promhttp.HandlerOpts{}),
 	)
-	http.HandleFunc(cfg.Server.Root, func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc(cfg.Server.Root, func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(`<html>
 			<head><title>OpenVPN Exporter</title></head>
 			<body>
@@ -161,11 +198,8 @@ func run(cfg *config.Config) error {
 	})
 
 	level.Info(logger).Log("msg", "Listening on", "addr", cfg.Server.Addr)
-	if err := http.ListenAndServe(cfg.Server.Addr, nil); err != nil {
-		level.Error(logger).Log("msg", "http listenandserve error", "err", err)
-		return err
-	}
-	return nil
+	server := &http.Server{Addr: cfg.Server.Addr, Handler: mux}
+	return server, logger
 }
 
 func parseStatusFileSlice(statusFile string) (string, string) {
