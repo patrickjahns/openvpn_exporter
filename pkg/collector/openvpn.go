@@ -12,6 +12,7 @@ import (
 type OpenVPNCollector struct {
 	logger                log.Logger
 	collectClientMetrics  bool
+	parserFunction        func(statusfile string) (*openvpn.Status, error)
 	OpenVPNServer         []OpenVPNServer
 	LastUpdated           *prometheus.Desc
 	ConnectedClients      *prometheus.Desc
@@ -31,10 +32,18 @@ type OpenVPNServer struct {
 }
 
 // NewOpenVPNCollector returns a new OpenVPNCollector
-func NewOpenVPNCollector(logger log.Logger, openVPNServer []OpenVPNServer, collectClientMetrics bool) *OpenVPNCollector {
+func NewOpenVPNCollector(logger log.Logger, openVPNServer []OpenVPNServer,
+	parserDecorators []openvpn.ParserDecorator, collectClientMetrics bool) *OpenVPNCollector {
+
+	parserFunc := openvpn.ParseFile
+	for _, parserFuncDecorator := range parserDecorators {
+		parserFunc = parserFuncDecorator.DecorateParseFile(parserFunc)
+	}
+
 	return &OpenVPNCollector{
 		logger:               logger,
 		OpenVPNServer:        openVPNServer,
+		parserFunction:       parserFunc,
 		collectClientMetrics: collectClientMetrics,
 
 		LastUpdated: prometheus.NewDesc(
@@ -115,7 +124,7 @@ func (c *OpenVPNCollector) collect(ovpn OpenVPNServer, ch chan<- prometheus.Metr
 		"statusFile", ovpn.StatusFile,
 		"name", ovpn.Name,
 	)
-	status, err := openvpn.ParseFile(ovpn.StatusFile)
+	status, err := c.parserFunction(ovpn.StatusFile)
 	if err != nil {
 		level.Warn(c.logger).Log(
 			"msg", "error parsing statusfile",

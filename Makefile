@@ -66,10 +66,7 @@ lint:
 
 .PHONY: test
 test:
-	@which goverage > /dev/null; if [ $$? -ne 0 ]; then \
-		GO111MODULE=off $(GO) get -u github.com/haya14busa/goverage; \
-	fi
-	goverage -v -coverprofile coverage.out $(PACKAGES)
+	go test $(PACKAGES) -v -covermode=atomic -cover -coverprofile coverage.out -coverpkg ./...
 
 .PHONY: build
 build: $(BIN)/$(EXECUTABLE)

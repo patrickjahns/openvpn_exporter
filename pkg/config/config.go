@@ -22,8 +22,10 @@ type Config struct {
 
 // StatusCollector contains configuration for the OpenVPN status collector
 type StatusCollector struct {
-	ExportClientMetrics bool
-	StatusFile          []string
+	ExportClientMetrics             bool
+	PseudonymizeClientMetrics       bool
+	PseudonymizeClientMetricsLength int
+	StatusFile                      []string
 }
 
 // Load initializes a default configuration struct.
